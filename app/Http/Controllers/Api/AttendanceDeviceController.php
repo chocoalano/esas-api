@@ -119,26 +119,27 @@ class AttendanceDeviceController extends Controller
             'id' => 'required|numeric',
             'token' => 'required|string',
         ]);
+        dd($validatedData);
 
-        try {
-            $proses->presence_qr(
-                Auth::user()->id,
-                $validatedData['type'],
-                $validatedData['id'],
-                $validatedData['token']
-            );
-            return response()->json([
-                'message' => 'success',
-                'result' => "Absensi {$validatedData['type']} berhasil disimpan."
-            ]);
-        } catch (\Exception $e) {
-            Log::error("Terjadi kesalahan absensi QR: " . $e->getMessage(), [
-                'exception' => $e,
-                'user_id' => auth()->id(), // Tambahkan user ID jika ada
-                'request_data' => request()->all(), // Log request data jika perlu
-            ]);
-            return $this->sendError('Terjadi kesalahan server.', $e->getMessage(), 500);
-        }
+        // try {
+        //     $proses->presence_qr(
+        //         Auth::user()->id,
+        //         $validatedData['type'],
+        //         $validatedData['id'],
+        //         $validatedData['token']
+        //     );
+        //     return response()->json([
+        //         'message' => 'success',
+        //         'result' => "Absensi {$validatedData['type']} berhasil disimpan."
+        //     ]);
+        // } catch (\Exception $e) {
+        //     Log::error("Terjadi kesalahan absensi QR: " . $e->getMessage(), [
+        //         'exception' => $e,
+        //         'user_id' => auth()->id(), // Tambahkan user ID jika ada
+        //         'request_data' => request()->all(), // Log request data jika perlu
+        //     ]);
+        //     return $this->sendError('Terjadi kesalahan server.', $e->getMessage(), 500);
+        // }
     }
 
     public function face_attendance(Request $request)

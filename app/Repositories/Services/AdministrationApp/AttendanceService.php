@@ -62,7 +62,7 @@ class AttendanceService implements AttendanceInterface
         if ($find) {
             $find->delete();
         }
-        return $find;
+        return $find ? true : false;
     }
 
     /**
