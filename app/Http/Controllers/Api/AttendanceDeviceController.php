@@ -119,7 +119,6 @@ class AttendanceDeviceController extends Controller
             'id' => 'required|numeric',
             'token' => 'required|string',
         ]);
-        dd($validatedData);
 
         try {
             $proses->presence_qr(
