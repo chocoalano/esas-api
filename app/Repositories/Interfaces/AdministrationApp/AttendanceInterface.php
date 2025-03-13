@@ -12,6 +12,7 @@ interface AttendanceInterface
     public function find(int $id);
     public function findbySchedule(int $id);
     public function create(array $data);
+    public function presence_qr(int $userId, string $type, int $idtoken, string $token);
     public function presence_in(array $data);
     public function presence_out(array $data);
     public function update(int $id, array $data);
