@@ -158,7 +158,9 @@ class AttendanceService implements AttendanceInterface
         }
 
         // Cek apakah QR sudah expired
-        if ($currentTime->gt($qrPresence->expires_at)) {
+        $exp = Carbon::parse($qrPresence->expires_at)
+            ->setTimezone(config("app.timezone"));
+        if ($currentTime->gt($exp)) {
             throw new Exception('Kode QR sudah kadaluarsa!');
         }
 

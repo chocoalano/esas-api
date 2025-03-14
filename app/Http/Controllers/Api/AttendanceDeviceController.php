@@ -132,6 +132,7 @@ class AttendanceDeviceController extends Controller
                 'result' => "Absensi {$validatedData['type']} berhasil disimpan."
             ]);
         } catch (\Exception $e) {
+            dd($e);
             Log::error("Terjadi kesalahan absensi QR: " . $e->getMessage(), [
                 'exception' => $e,
                 'user_id' => auth()->id(), // Tambahkan user ID jika ada

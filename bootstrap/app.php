@@ -19,7 +19,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'mac.restrict' => \App\Http\Middleware\MacAddressMiddleware::class,
         ]);
-
         // Tangani redirect untuk guest pada API routes
         $middleware->redirectGuestsTo(function (Request $request) {
             if ($request->is('api/*')) {
