@@ -108,6 +108,7 @@ class AttendanceDeviceController extends Controller
             );
             return $this->sendResponse($qr, 'Save token qr successfully.');
         } catch (\Exception $e) {
+            dd($e->getMessage());
             return $this->sendError('Save token qr failed.', ['error' => $e->getMessage()], 500);
         }
     }
