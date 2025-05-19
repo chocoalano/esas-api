@@ -16,6 +16,7 @@ interface UserInterface
     public function countAll(): int;
     public function login(array $data);
     public function profile();
+    public function update_upload_avatar($file);
     public function update_password(int $userId, array $data);
     public function auth_update_family(array $data);
     public function auth_update_formal_education(array $data);

@@ -8,7 +8,6 @@ use App\Repositories\Interfaces\AdministrationApp\AttendanceInterface;
 use App\Repositories\Interfaces\AdministrationApp\PermitInterface;
 use App\Repositories\Interfaces\AdministrationApp\ScheduleAttendanceInterface;
 use App\Repositories\Interfaces\CoreApp\UserInterface;
-use App\Support\FcmService;
 use App\Support\NotificationService;
 use App\Support\StringSupport;
 use App\Support\UploadFile;
@@ -174,8 +173,8 @@ class PermitService implements PermitInterface
     {
         return DB::transaction(function () use ($data) {
             if (isset($data['file']) && !empty($data['file'])) {
-                $attachment = UploadFile::uploadAttachment($data['file'], 'permit-attachments');
-                $data['file'] = $attachment;
+                $attachment=UploadFile::uploadToSpaces($data['file'], 'permits', now()->format('YmdHis'));
+                $data['file'] = $attachment['path'];
             }
             // Buat permit
             $permit = $this->model->create($data);

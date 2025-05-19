@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class UserService implements UserInterface
 {
@@ -135,7 +136,6 @@ class UserService implements UserInterface
         return $query->paginate($limit, ['*'], 'page', $page);
     }
 
-
     /**
      * @inheritDoc
      */
@@ -185,6 +185,40 @@ class UserService implements UserInterface
         }
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function update_upload_avatar($file)
+    {
+        $user = Auth::user();
+        $baseDir = config('app.basepath');
+
+        // File baru
+        $uploadedFile = $file;
+        $path = "avatar-users";
+        $fileName = strtolower($user->nip . '-' . time() . '.png');
+        $filePath = "$baseDir/$path/$fileName";
+
+        // Simpan file baru sebelum menghapus file lama
+        // Storage::disk(config('app.disk'))
+        //     ->putFileAs($baseDir, $uploadedFile, $fileName, 'public');
+        dd($filePath);
+        // Hapus avatar lama hanya jika file sebelumnya ada dan berbeda dengan yang baru
+        // if (!empty($user->avatar) && $user->avatar !== $filePath) {
+        //     if (Storage::disk(config('app.disk'))->exists("$baseDir/$user->avatar")) {
+        //         Storage::disk(config('app.disk'))->delete("$baseDir/$user->avatar");
+        //     }
+        // }
+
+        // Update avatar user dalam transaksi database
+        // return DB::transaction(function () use ($user, $path, $fileName) {
+        //     $user->update(['avatar' => "$path/$fileName"]);
+        // });
+    }
+
+    /**
+     * @inheritDoc
+     */
     private function updateOrCreateRelatedData($model, $data)
     {
         // Update related details
@@ -214,6 +248,9 @@ class UserService implements UserInterface
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     private function bulkUpdateOrCreate($relation, $data)
     {
         try {
@@ -237,6 +274,7 @@ class UserService implements UserInterface
             return $e->getMessage();
         }
     }
+
     /**
      * @inheritDoc
      */
@@ -244,6 +282,7 @@ class UserService implements UserInterface
     {
         return $this->model->count();
     }
+
     /**
      * @inheritDoc
      */
@@ -260,6 +299,7 @@ class UserService implements UserInterface
             'employee'
         )->where('nip', $nip)->first();
     }
+
     /**
      * @inheritDoc
      */
@@ -271,13 +311,14 @@ class UserService implements UserInterface
             });
         })->get();
     }
+
     /**
      * @inheritDoc
      */
     public function login(array $data)
     {
         // Validasi input untuk memastikan 'indicatour' dan 'password' tersedia
-        if (empty($data['indicatour']) || empty($data['password']) | empty($data['device_info'])) {
+        if (empty($data['indicatour']) || empty($data['password'])) {
             return [
                 'success' => false,
                 'message' => 'NIP dan password harus diisi.',
@@ -289,12 +330,15 @@ class UserService implements UserInterface
         $user = $this->model->where(function ($query) use ($data) {
             $query->where('email', $data['indicatour'])
                 ->orWhere('nip', $data['indicatour']);
-        })
-            ->where(function ($query) use ($data) {
+        });
+        if (isset($data['device_info']) && !empty($data['device_info'])) {
+            $user->where(function ($query) use ($data) {
                 $query->where('device_id', $data['device_info'])
                     ->orWhereNull('device_id');
-            })
-            ->first();
+            });
+        }
+
+        $detail = $user->first();
         // Jika pengguna tidak ditemukan
         if (!$user) {
             return [
@@ -305,7 +349,7 @@ class UserService implements UserInterface
         }
 
         // Coba autentikasi dengan email pengguna dan password yang diberikan
-        if (Auth::attempt(['email' => $user->email, 'password' => $data['password']])) {
+        if (Auth::attempt(['email' => $detail->email, 'password' => $data['password']])) {
             return [
                 'success' => true,
                 'message' => 'Login berhasil.',
@@ -357,6 +401,7 @@ class UserService implements UserInterface
         $find = $this->find(Auth::id());
         return $this->bulkUpdateOrCreate($find->workExperiences(), $data ?? []);
     }
+
     /**
      * @inheritDoc
      */
@@ -372,6 +417,7 @@ class UserService implements UserInterface
         }
         return false;
     }
+
     /**
      * @inheritDoc
      */
@@ -385,6 +431,7 @@ class UserService implements UserInterface
             ->firstOrFail();
         return $schedule;
     }
+
     /**
      * @inheritDoc
      */
@@ -397,6 +444,7 @@ class UserService implements UserInterface
         ], $data);
         return $user;
     }
+
     /**
      * @inheritDoc
      */

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Tools\BugReportRequest;
 use App\Http\Resources\Tools\BugReportListPaginationResource;
 use App\Repositories\Interfaces\Tools\BugReportInterface;
-use App\Support\UploadFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 

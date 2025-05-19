@@ -18,13 +18,6 @@ class UserTimeworkSchedule extends Model
         'user_id',
         'time_work_id',
         'work_day',
-        'name',
-        'nip',
-        'departement_id',
-        'departement',
-        'timework',
-        'timein',
-        'timeout',
     ];
 
     protected $casts = [

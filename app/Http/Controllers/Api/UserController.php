@@ -19,10 +19,11 @@ use App\Models\CoreApp\Setting;
 use App\Models\CoreApp\TimeWork;
 use App\Models\FcmModel;
 use App\Repositories\Interfaces\CoreApp\UserInterface;
-use App\Support\UploadFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -120,11 +121,11 @@ class UserController extends Controller
             $user = Auth::user();
             $device_token = $request->input('device_token');
             $data_save = [
-                "user_id"=>$user->id,
-                "device_token"=>$device_token,
+                "user_id" => $user->id,
+                "device_token" => $device_token,
             ];
-            $save = FcmModel::updateOrCreate(["user_id"=>$user->id],$data_save);
-            return $this->sendResponse( $save, 'User setup token successfully.');
+            $save = FcmModel::updateOrCreate(["user_id" => $user->id], $data_save);
+            return $this->sendResponse($save, 'User setup token successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Process errors.', ['error' => $e->getMessage()]);
         }
@@ -143,7 +144,7 @@ class UserController extends Controller
         try {
             if (Auth::user()->device_id === null) {
                 Auth::user()->update([
-                    'device_id'=>$request->input('imei')
+                    'device_id' => $request->input('imei')
                 ]);
             }
             return $this->sendResponse(Auth::user(), 'User detail set imei successfully.');
@@ -184,27 +185,25 @@ class UserController extends Controller
     public function profile_avatar(Request $request)
     {
         try {
-            $valid = Validator::make($request->all(), [
-                'avatar' => 'required|mimes:jpeg,jpg,png,bmp,webp,heic,tiff|max:10000',
+            // Validasi langsung pada request
+            $request->validate([
+                'avatar' => 'required|mimes:jpeg,jpg,png,bmp,webp,heic,tiff|max:5120',
             ]);
-            if ($valid->fails()) {
-                return $this->sendError('Validation Error.', $valid->errors(), 422);
-            }
-            $user = Auth::user();
-            if ($user->avatar) {
-                UploadFile::unlink($user->avatar);
-            }
-            $uploadedFile = $request->file('avatar');
-            $uploadPath = UploadFile::uploadWithResize($uploadedFile, 'avatar-users', $user->nip);
-            $user->update(['avatar' => $uploadPath]);
-
+            $this->proses->update_upload_avatar($request->file('avatar'));
             return response()->json([
                 'success' => true,
                 'message' => 'Avatar updated successfully.',
-                'avatar_url' => env('APP_URL') . "/api/assets/" . $uploadPath,
             ], 200);
+
         } catch (\Exception $e) {
-            return $this->sendError('Process Error.', ['error' => $e->getMessage()], 500);
+            dd($e);
+            \Log::error('Avatar upload failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Process Error.',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
     /**

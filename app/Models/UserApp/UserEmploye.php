@@ -38,6 +38,20 @@ class UserEmploye extends Model
     {
         return $this->belongsTo(User::class);
     }
+    // Dalam model User.php
+    public static function approval_hr()
+    {
+        return self::whereHas('employee', function ($query) {
+            $query->whereHas('departement', function ($dept) {
+                $dept->where('name', 'HRGA');
+            })
+                ->whereHas('jobLevel', function ($lvl) {
+                    $lvl->where('name', 'MANAGER');
+                });
+        })->first();
+    }
+
+
     public function departement()
     {
         return $this->belongsTo(Departement::class);
