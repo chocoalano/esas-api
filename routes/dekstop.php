@@ -19,6 +19,7 @@ use App\Http\Controllers\ApiWeb\LaporanBugController;
 use App\Http\Controllers\ApiWeb\JadwalKerjaController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('unauthorized', [AuthController::class, 'unauthorized'])->name('unauthorized');
 Route::prefix('web-auth')->group(function () {
     Route::controller(AuthController::class)
         ->group(function () {

@@ -206,4 +206,8 @@ class AuthController extends Controller
             'avatar_file' => ['nullable', 'file', 'image', 'max:10048'],
         ]);
     }
+
+    public function unauthorized(){
+        return response()->json(['message'=>'unauthorized'], 401);
+    }
 }
