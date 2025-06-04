@@ -5,7 +5,6 @@ use App\Events\MessageSent;
 use App\Models\CoreApp\Notification;
 use App\Models\FcmModel;
 use App\Support\FcmService;
-use Illuminate\Support\Facades\Route;
 use Kreait\Firebase\Exception\FirebaseException;
 use Kreait\Firebase\Exception\MessagingException;
 
@@ -71,7 +70,7 @@ class PermitNotification
                 $notifsave->data = $data;
                 $notifsave->save();
             }
-            broadcast(new MessageSent($body, $user_apply, $user_target, route('filament.app.resources.permits.index')));
+            broadcast(new MessageSent($body, $user_apply, $user_target, '/'));
             $this->fcm->sendToMultiple($token, $title, $body, $data);
         } catch (MessagingException | FirebaseException $e) {
             throw new \Exception($e->getMessage(), 1);

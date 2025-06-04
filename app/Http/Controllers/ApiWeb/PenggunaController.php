@@ -5,7 +5,6 @@ namespace App\Http\Controllers\ApiWeb;
 use App\Http\Controllers\Controller;
 use App\Models\CoreApp\Company;
 use App\Models\CoreApp\Departement;
-use App\Models\CoreApp\TimeWork;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
@@ -28,18 +27,22 @@ class PenggunaController extends Controller
             'page' => 'required|integer|min:1',
             'limit' => 'required|integer|min:1|max:100',
             'sortBy' => 'nullable|array',
-            'sortBy.*.key' => 'required_with:sortBy|string|in:name,latitude,longitude,radius,full_address,created_at,updated_at',
+            'sortBy.*.key' => 'required_with:sortBy|string|in:name,nip,email,status,created_at,updated_at',
             'sortBy.*.order' => 'required_with:sortBy|string|in:asc,desc',
+
             'search' => 'nullable|array',
-            'search.name' => 'nullable|string',
-            'search.company' => 'nullable|integer',
-            'search.departemen' => 'nullable|integer',
-            'search.position' => 'nullable|integer',
-            'search.level' => 'nullable|integer',
+            'search.company' => ['nullable', 'exists:companies,id'],
+            'search.departemen' => ['nullable', 'exists:departments,id'],
+            'search.position' => ['nullable', 'exists:positions,id'],
+            'search.level' => ['nullable', 'exists:levels,id'],
+            'search.nip' => ['nullable', 'string', 'max:50'],
+            'search.name' => ['nullable', 'string', 'max:100'],
+            'search.email' => ['nullable', 'email'],
+            'search.status' => ['nullable', 'in:active,inactive,resign'],
             'search.createdAt' => 'nullable|date_format:Y-m-d',
             'search.updatedAt' => 'nullable|date_format:Y-m-d',
             'search.startRange' => 'nullable|date_format:Y-m-d',
-            'search.endRange' => 'nullable|date_format:Y-m-d',
+            'search.endRange' => 'nullable|date_format:Y-m-d|after_or_equal:search.startRange',
         ]);
 
         $page = $validated['page'];
@@ -47,7 +50,7 @@ class PenggunaController extends Controller
         $search = $validated['search'] ?? [];
         $sortBy = $validated['sortBy'] ?? [];
 
-        $query = User::query()->with([
+        $query = User::with([
             'company',
             'details',
             'employee',
@@ -56,42 +59,26 @@ class PenggunaController extends Controller
             'employee.jobLevel',
         ]);
 
-        // Filtering by name (type)
-        if (!empty($search['name'])) {
-            $query->where('type', 'like', '%' . $search['name'] . '%');
-        }
+        // Filter langsung pada User
+        $query->when($search['company'] ?? null, fn($q, $value) => $q->where('company_id', $value))
+            ->when($search['nip'] ?? null, fn($q, $value) => $q->where('nip', 'like', "%$value%"))
+            ->when($search['name'] ?? null, fn($q, $value) => $q->where('name', 'like', "%$value%"))
+            ->when($search['email'] ?? null, fn($q, $value) => $q->where('email', 'like', "%$value%"))
+            ->when($search['status'] ?? null, fn($q, $value) => $q->where('status', $value))
+            ->when($search['createdAt'] ?? null, fn($q, $value) => $q->whereDate('created_at', $value))
+            ->when($search['updatedAt'] ?? null, fn($q, $value) => $q->whereDate('updated_at', $value))
+            ->when(
+                isset($search['startRange'], $search['endRange']),
+                fn($q) => $q->whereBetween('updated_at', [$search['startRange'], $search['endRange']])
+            );
 
-        // Filter by company directly
-        if (!empty($search['company'])) {
-            $query->where('company_id', $search['company']);
-        }
-
-        // Filter employee relationship (departemen, position, level)
+        // Filter berdasarkan relasi employee
         if (!empty($search['departemen']) || !empty($search['position']) || !empty($search['level'])) {
             $query->whereHas('employee', function ($q) use ($search) {
-                if (!empty($search['departemen'])) {
-                    $q->where('departement_id', $search['departemen']);
-                }
-                if (!empty($search['position'])) {
-                    $q->where('job_position_id', $search['position']);
-                }
-                if (!empty($search['level'])) {
-                    $q->where('job_level_id', $search['level']);
-                }
+                $q->when($search['departemen'] ?? null, fn($q, $val) => $q->where('departement_id', $val))
+                    ->when($search['position'] ?? null, fn($q, $val) => $q->where('job_position_id', $val))
+                    ->when($search['level'] ?? null, fn($q, $val) => $q->where('job_level_id', $val));
             });
-        }
-
-        // Date filters
-        if (!empty($search['createdAt'])) {
-            $query->whereDate('created_at', $search['createdAt']);
-        }
-
-        if (!empty($search['updatedAt'])) {
-            $query->whereDate('updated_at', $search['updatedAt']);
-        }
-
-        if (!empty($search['startRange']) && !empty($search['endRange'])) {
-            $query->whereBetween('updated_at', [$search['startRange'], $search['endRange']]);
         }
 
         // Sorting
@@ -103,7 +90,7 @@ class PenggunaController extends Controller
             $query->orderBy('created_at', 'desc');
         }
 
-        // Pagination
+        // Paginate
         $result = $query->paginate($limit, ['*'], 'page', $page);
 
         return $this->sendResponse($result, 'Data User berhasil diambil');
@@ -115,29 +102,54 @@ class PenggunaController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateUser($request);
+
         try {
-            $user = User::new();
+            $user = new User();
             $user->company_id = $validated['company_id'];
             $user->name = $validated['name'];
             $user->nip = $validated['nip'];
             $user->email = $validated['email'];
             $user->status = $validated['status'];
-            // Update avatar jika ada
+            $user->password = Hash::make($validated['password']);
+
+            // Upload avatar jika ada
             if ($request->hasFile('avatar')) {
-                $upload = UploadFile::uploadToSpaces($request->file('avatar'), 'avatars', Carbon::now()->format('YmdHis'));
-                if (is_array($upload) && isset($upload['url']) && isset($upload['path'])) {
+                $upload = UploadFile::uploadToSpaces(
+                    $request->file('avatar'),
+                    'avatars',
+                    Carbon::now()->format('YmdHis')
+                );
+
+                if (is_array($upload) && isset($upload['path'])) {
                     $user->avatar = $upload['path'];
                 }
             }
+
             $user->save();
-            $user->details()->updateOrCreate([], $validated['details']);
-            $user->address()->updateOrCreate([], $validated['address']);
-            $user->salaries()->updateOrCreate([], $validated['salaries']);
-            $user->employee()->updateOrCreate([], $validated['employee']);
+
+            // Update atau buat relasi terkait jika tersedia di data validasi
+            if (isset($validated['details'])) {
+                $user->details()->updateOrCreate([], $validated['details']);
+            }
+
+            if (isset($validated['address'])) {
+                $user->address()->updateOrCreate([], $validated['address']);
+            }
+
+            if (isset($validated['salaries'])) {
+                $user->salaries()->updateOrCreate([], $validated['salaries']);
+            }
+
+            if (isset($validated['employee'])) {
+                $user->employee()->updateOrCreate([], $validated['employee']);
+            }
 
             return $this->sendResponse($user, 'Data User berhasil dibuat.');
+
         } catch (\Exception $e) {
-            return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
+            return $this->sendError('Terjadi kesalahan saat menyimpan data.', [
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -259,9 +271,8 @@ class PenggunaController extends Controller
      */
     public function destroy(string $id)
     {
-        $idData = explode(',', $id);
         try {
-            $dt = TimeWork::whereIn('id', $idData)->delete();
+            $dt = User::find($id)->delete();
             return $this->sendResponse($dt, 'Data User berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -301,17 +312,17 @@ class PenggunaController extends Controller
             $query->where('company_id', $validated['company']);
         }
         if (!empty($validated['departemen'])) {
-            $query->whereHas('employee',function($emp)use($validated){
+            $query->whereHas('employee', function ($emp) use ($validated) {
                 $emp->where('departement_id', $validated['departemen']);
             });
         }
         if (!empty($validated['position'])) {
-            $query->whereHas('employee',function($emp)use($validated){
+            $query->whereHas('employee', function ($emp) use ($validated) {
                 $emp->where('job_position_id', $validated['position']);
             });
         }
         if (!empty($validated['level'])) {
-            $query->whereHas('employee',function($emp)use($validated){
+            $query->whereHas('employee', function ($emp) use ($validated) {
                 $emp->where('job_level_id', $validated['level']);
             });
         }
@@ -344,41 +355,62 @@ class PenggunaController extends Controller
 
     public function downloadExcel(Request $request)
     {
+        ini_set('memory_limit', '512M');
         // Validasi input
         $validated = $request->validate([
-            'name' => ['nullable', 'string'],
-            'radius' => ['nullable', 'numeric', 'min:0'],
-            'createdAt' => ['nullable', 'date_format:Y-m-d'],
-            'updatedAt' => ['nullable', 'date_format:Y-m-d'],
-            'startRange' => ['nullable', 'date_format:Y-m-d'],
-            'endRange' => ['nullable', 'date_format:Y-m-d'],
+            'company' => ['required', 'exists:companies,id'],
+            'departemen' => ['nullable', 'exists:departments,id'],
+            'position' => ['nullable', 'exists:job_positions,id'],
+            'level' => ['nullable', 'exists:job_levels,id'],
+            'nip' => ['nullable', 'string', 'max:50'],
+            'name' => ['nullable', 'string', 'max:100'],
+            'email' => ['nullable', 'email'],
+            'status' => ['nullable', 'in:active,inactive,resign'],
+            'start' => ['nullable', 'date', 'before_or_equal:end'],
+            'end' => ['nullable', 'date', 'after_or_equal:start'],
         ]);
 
-        // Build query berdasarkan input yang tervalidasi
-        $query = TimeWork::query();
+        // Build query berdasarkan input
+        $query = User::with('company')->where('company_id', $validated['company']);
+
+        if (!empty($validated['departemen'])) {
+            $query->whereHas('employee', fn($q) => $q->where('departement_id', $validated['departemen']));
+        }
+
+        if (!empty($validated['position'])) {
+            $query->whereHas('employee', fn($q) => $q->where('position_id', $validated['position']));
+        }
+
+        if (!empty($validated['level'])) {
+            $query->whereHas('employee', fn($q) => $q->where('level_id', $validated['level']));
+        }
+
+        if (!empty($validated['nip'])) {
+            $query->where('nip', 'like', '%' . $validated['nip'] . '%');
+        }
 
         if (!empty($validated['name'])) {
             $query->where('name', 'like', '%' . $validated['name'] . '%');
         }
-        if (!empty($validated['radius'])) {
-            $query->where('radius', $validated['radius']);
+
+        if (!empty($validated['email'])) {
+            $query->where('email', 'like', '%' . $validated['email'] . '%');
         }
-        if (!empty($validated['createdAt'])) {
-            $query->whereDate('created_at', $validated['createdAt']);
+
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
         }
-        if (!empty($validated['updatedAt'])) {
-            $query->whereDate('updated_at', $validated['updatedAt']);
-        }
-        if (!empty($validated['startRange']) && !empty($validated['endRange'])) {
+
+        if (!empty($validated['start']) && !empty($validated['end'])) {
             $query->whereBetween('created_at', [
-                $validated['startRange'],
-                $validated['endRange']
+                $validated['start'],
+                $validated['end']
             ]);
         }
 
-        $companies = $query->get();
+        $users = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($users->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data User yang ditemukan.'], 404);
         }
 
@@ -388,24 +420,30 @@ class PenggunaController extends Controller
 
         // Header kolom
         $sheet->setCellValue('A1', 'No');
-        $sheet->setCellValue('B1', 'Nama');
-        $sheet->setCellValue('C1', 'Radius');
-        $sheet->setCellValue('D1', 'Dibuat');
-        $sheet->setCellValue('E1', 'Diperbarui');
+        $sheet->setCellValue('B1', 'NIP');
+        $sheet->setCellValue('C1', 'Nama');
+        $sheet->setCellValue('D1', 'Email');
+        $sheet->setCellValue('E1', 'Status');
+        $sheet->setCellValue('F1', 'Perusahaan');
+        $sheet->setCellValue('G1', 'Tanggal Dibuat');
+        $sheet->setCellValue('H1', 'Tanggal Diperbarui');
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $dt) {
+        foreach ($users as $i => $user) {
             $sheet->setCellValue('A' . $row, $i + 1);
-            $sheet->setCellValue('B' . $row, $dt->name);
-            $sheet->setCellValue('C' . $row, $dt->radius);
-            $sheet->setCellValue('D' . $row, $dt->created_at->format('Y-m-d H:i:s'));
-            $sheet->setCellValue('E' . $row, $dt->updated_at->format('Y-m-d H:i:s'));
+            $sheet->setCellValue('B' . $row, $user->nip);
+            $sheet->setCellValue('C' . $row, $user->name);
+            $sheet->setCellValue('D' . $row, $user->email);
+            $sheet->setCellValue('E' . $row, $user::STATUS[$user->status] ?? $user->status);
+            $sheet->setCellValue('F' . $row, $user->company->name ?? '-');
+            $sheet->setCellValue('G' . $row, $user->created_at->format('Y-m-d H:i:s'));
+            $sheet->setCellValue('H' . $row, $user->updated_at->format('Y-m-d H:i:s'));
             $row++;
         }
 
         // Buat stream response
-        $fileName = 'data_TimeWork_' . now()->format('Ymd_His') . '.xlsx';
+        $fileName = 'data_user_' . now()->format('Ymd_His') . '.xlsx';
 
         $response = new StreamedResponse(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
@@ -426,14 +464,15 @@ class PenggunaController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'nip' => ['required', 'string', 'max:50'],
             'email' => ['required', 'email', 'max:255'],
+            'password' => ['nullable', 'string', 'max:20'],
             'status' => ['required', 'in:active,inactive,resign'],
             'details.phone' => ['required', 'string', 'max:20'],
             'details.placebirth' => ['required', 'string', 'max:100'],
             'details.datebirth' => ['required', 'date'],
             'details.gender' => ['required', 'in:m,f'],
-            'details.blood' => ['nullable', 'in:a,b,ab,o'],
+            'details.blood' => ['required', 'in:a,b,ab,o'],
             'details.marital_status' => ['required', 'in:single,married,widow,widower'],
-            'details.religion' => ['required', 'string', 'max:50'],
+            'details.religion' => ['required', 'in:islam,protestan,khatolik,hindu,buddha,khonghucu'],
             'address.identity_type' => ['required', 'in:ktp,sim,passport'],
             'address.identity_numbers' => ['required', 'string', 'max:100'],
             'address.province' => ['required', 'string', 'max:100'],
@@ -449,9 +488,9 @@ class PenggunaController extends Controller
             'employee.approval_manager_id' => ['required', 'integer', 'exists:users,id'],
             'employee.join_date' => ['required', 'date'],
             'employee.sign_date' => ['required', 'date'],
-            'employee.bank_name' => ['nullable', 'string', 'max:100'],
-            'employee.bank_number' => ['nullable', 'string', 'max:50'],
-            'employee.bank_holder' => ['nullable', 'string', 'max:100'],
+            'employee.bank_name' => ['required', 'string', 'max:100'],
+            'employee.bank_number' => ['required', 'numeric', 'max:50'],
+            'employee.bank_holder' => ['required', 'string', 'max:100'],
             'avatar' => ['nullable', 'file', 'image', 'max:10048'],
         ]);
     }

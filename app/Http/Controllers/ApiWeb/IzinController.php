@@ -135,7 +135,7 @@ class IzinController extends Controller
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
+            'end_time' => 'required|date_format:H:i',
             'notes' => 'nullable|string|max:255',
             'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
         ]);
