@@ -426,7 +426,7 @@ class PenggunaController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'nip' => ['required', 'string', 'max:50'],
             'email' => ['required', 'email', 'max:255'],
-            'status' => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:active,inactive,resign'],
             'details.phone' => ['required', 'string', 'max:20'],
             'details.placebirth' => ['required', 'string', 'max:100'],
             'details.datebirth' => ['required', 'date'],
