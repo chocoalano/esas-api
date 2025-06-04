@@ -115,7 +115,6 @@ class PenggunaController extends Controller
     public function store(Request $request)
     {
         $validated = $this->validateUser($request);
-
         try {
             $user = User::new();
             $user->company_id = $validated['company_id'];
