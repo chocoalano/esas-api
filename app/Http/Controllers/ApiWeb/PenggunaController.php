@@ -32,9 +32,9 @@ class PenggunaController extends Controller
 
             'search' => 'nullable|array',
             'search.company' => ['nullable', 'exists:companies,id'],
-            'search.departemen' => ['nullable', 'exists:departments,id'],
-            'search.position' => ['nullable', 'exists:positions,id'],
-            'search.level' => ['nullable', 'exists:levels,id'],
+            'search.departemen' => ['nullable', 'exists:departements,id'],
+            'search.position' => ['nullable', 'exists:job_positions,id'],
+            'search.level' => ['nullable', 'exists:job_levels,id'],
             'search.nip' => ['nullable', 'string', 'max:50'],
             'search.name' => ['nullable', 'string', 'max:100'],
             'search.email' => ['nullable', 'email'],
@@ -469,7 +469,7 @@ class PenggunaController extends Controller
             'details.phone' => ['required', 'string', 'max:20'],
             'details.placebirth' => ['required', 'string', 'max:100'],
             'details.datebirth' => ['required', 'date'],
-            'details.gender' => ['required', 'in:m,f'],
+            'details.gender' => ['required', 'in:m,w'],
             'details.blood' => ['required', 'in:a,b,ab,o'],
             'details.marital_status' => ['required', 'in:single,married,widow,widower'],
             'details.religion' => ['required', 'in:islam,protestan,khatolik,hindu,buddha,khonghucu'],
@@ -489,9 +489,15 @@ class PenggunaController extends Controller
             'employee.join_date' => ['required', 'date'],
             'employee.sign_date' => ['required', 'date'],
             'employee.bank_name' => ['required', 'string', 'max:100'],
-            'employee.bank_number' => ['required', 'numeric', 'max:50'],
+            'employee.bank_number' => ['required', 'string', 'max:30'],
             'employee.bank_holder' => ['required', 'string', 'max:100'],
-            'avatar' => ['nullable', 'file', 'image', 'max:10048'],
+            'avatar' => [
+                'nullable',
+                'file',
+                'image',
+                'mimes:jpg,jpeg,png,webp,heic,heif',
+                'max:10048', // 10 MB
+            ],
         ]);
     }
 }
