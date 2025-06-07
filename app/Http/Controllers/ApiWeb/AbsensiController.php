@@ -68,7 +68,14 @@ class AbsensiController extends Controller
         $query->when(!empty($search['createdAt']), fn($q) => $q->whereDate('created_at', $search['createdAt']));
         $query->when(!empty($search['updatedAt']), fn($q) => $q->whereDate('updated_at', $search['updatedAt']));
         if (!empty($search['start']) && !empty($search['end'])) {
-            $query->whereBetween('updated_at', [$search['start'], $search['end']]);
+            $query->where(function ($q) use ($search) {
+                $q->where('updated_at', '>=', $search['start'])
+                    ->where('updated_at', '<=', $search['end']);
+            })->orWhere(function ($q) use ($search) {
+                $q->where('created_at', '>=', $search['start'])
+                    ->where('created_at', '<=', $search['end']);
+            });
+
         }
         if (!empty($sortBy)) {
             foreach ($sortBy as $sort) {
@@ -201,8 +208,8 @@ class AbsensiController extends Controller
         try {
             $absen = UserAttendance::find($id);
             $payload = [
-                'before'=>$absen->toArray(),
-                'after'=>$validated,
+                'before' => $absen->toArray(),
+                'after' => $validated,
             ];
             $absen->user_id = $validated['user_id'];
             $absen->user_timework_schedule_id = $validated['user_timework_schedule_id'];
