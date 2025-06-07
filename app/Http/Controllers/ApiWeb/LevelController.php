@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CoreApp\Departement;
 use App\Models\CoreApp\Company;
 use App\Models\CoreApp\JobLevel;
+use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -53,8 +54,8 @@ class LevelController extends Controller
             }
 
             if (!empty($search['departemen'])) {
-                $query->whereHas('departement', function ($departement) use ($search) {
-                    $departement->where('name', $search['departemen']);
+                $query->whereHas('departement', function ($data) use ($search) {
+                    $data->where('name', $search['departemen']);
                 });
             }
             if (!empty($search['createdAt'])) {
@@ -76,8 +77,9 @@ class LevelController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data departemen berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new JobLevel(), $data->toArray());
+        return $this->sendResponse($data, 'Data departemen berhasil diambil');
     }
 
     /**
@@ -92,13 +94,13 @@ class LevelController extends Controller
         ]);
 
         try {
-            $departement = JobLevel::create([
+            $data = JobLevel::create([
                 'company_id' => $validated['company_id'],
                 'departement_id' => $validated['departement_id'],
                 'name' => $validated['name'],
             ]);
-
-            return $this->sendResponse($departement, 'Data departemen berhasil dibuat.');
+            Logger::log('create', new JobLevel(), $data->toArray());
+            return $this->sendResponse($data, 'Data departemen berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
         }
@@ -117,7 +119,7 @@ class LevelController extends Controller
             ])->find($id);
             $cy = Company::all();
             $dp = Departement::all();
-
+            Logger::log('show', new JobLevel(), $dt->toArray());
             return $this->sendResponse([
                 'level' => $dt,
                 'select_company' => $cy,
@@ -140,12 +142,17 @@ class LevelController extends Controller
         ]);
         try {
             // Menyimpan data departemen ke database
-            $dt = JobLevel::find($id)
-                ->update([
-                    'company_id' => $validated['company_id'],
-                    'departement_id' => $validated['departement_id'],
-                    'name' => $validated['name'],
-                ]);
+            $dt = JobLevel::find($id);
+            $payload = [
+                'before' => $dt->toArray(),
+                'after' => $validated
+            ];
+            Logger::log('update', new JobLevel(), $payload);
+            $dt->update([
+                'company_id' => $validated['company_id'],
+                'departement_id' => $validated['departement_id'],
+                'name' => $validated['name'],
+            ]);
 
             return $this->sendResponse($dt, 'Data departemen berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -160,7 +167,10 @@ class LevelController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = JobLevel::whereIn('id', $idData)->delete();
+            $dt = JobLevel::whereIn('id', $idData);
+            $delete = $dt->get();
+            Logger::log('delete', new JobLevel(), $delete->toArray());
+            $dt->delete();
             return $this->sendResponse($dt, 'Data departemen berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -192,7 +202,7 @@ class LevelController extends Controller
         // Generate PDF
         $pdf = Pdf::loadView('pdf.level', ['level' => $data]);
         $filename = 'level-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new JobLevel(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -232,9 +242,9 @@ class LevelController extends Controller
             ]);
         }
 
-        $companies = $query->get();
+        $data = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data departemen yang ditemukan.'], 404);
         }
 
@@ -251,7 +261,7 @@ class LevelController extends Controller
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $dt) {
+        foreach ($data as $i => $dt) {
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $dt->name);
             $sheet->setCellValue('C' . $row, $dt->radius);
@@ -271,7 +281,7 @@ class LevelController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new JobLevel(), $data->toArray());
         return $response;
     }
 }

@@ -19,11 +19,10 @@ use App\Models\CoreApp\Setting;
 use App\Models\CoreApp\TimeWork;
 use App\Models\FcmModel;
 use App\Repositories\Interfaces\CoreApp\UserInterface;
+use App\Support\Logger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
@@ -87,6 +86,7 @@ class UserController extends Controller
             $success['token_type'] = 'Bearer';
             $success['name'] = $user->name;
             $success['userId'] = $user->id;
+            Logger::log('login', Auth::user(), $user->toArray());
             return $this->sendResponse($success, 'User login successfully.');
         }
         return $this->sendError('Unauthorised.', ['error' => $proses['message']]);
@@ -424,6 +424,7 @@ class UserController extends Controller
                 return $this->sendError('Validation Error.', ['error' => $valid->errors()], 422);
             }
             $register = $this->proses->create($valid->getData());
+            Logger::log('create', Auth::user(), $valid->getData());
             return $this->sendResponse(new UserResource($register), 'User created successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Process errors.', ['error' => $e->getMessage()], 500);
@@ -437,6 +438,7 @@ class UserController extends Controller
     {
         try {
             $data = $this->proses->find($id);
+            Logger::log('show', Auth::user(), $data->toArray());
             return $this->sendResponse(new UserResource($data), 'User show detail successfully.');
         } catch (\Exception $e) {
             return $this->sendError('Process errors.', ['error' => $e->getMessage()], 500);

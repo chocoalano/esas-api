@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ApiWeb;
 
 use App\Http\Controllers\Controller;
 use App\Models\CoreApp\Company;
+use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -65,8 +66,9 @@ class CompanyController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data perusahaan berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', $data->first() ?? new Company(), $data->toArray());
+        return $this->sendResponse($data, 'Data perusahaan berhasil diambil');
     }
 
     /**
@@ -83,15 +85,15 @@ class CompanyController extends Controller
         ]);
         try {
             // Menyimpan data perusahaan ke database
-            $company = Company::create([
+            $data = Company::create([
                 'name' => $validated['name'],
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
                 'radius' => $validated['radius'],
                 'full_address' => $validated['full_address'],
             ]);
-
-            return $this->sendResponse($company, 'Data perusahaan berhasil dibuat');
+            Logger::log('create', new Company(), $data->toArray());
+            return $this->sendResponse($data, 'Data perusahaan berhasil dibuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
         }
@@ -104,9 +106,9 @@ class CompanyController extends Controller
     {
         try {
             // Menyimpan data perusahaan ke database
-            $company = Company::find($id);
-
-            return $this->sendResponse($company, 'Data perusahaan berhasil dimuat');
+            $data = Company::find($id);
+            Logger::log('show', new Company(), $data->toArray());
+            return $this->sendResponse($data, 'Data perusahaan berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
         }
@@ -126,16 +128,20 @@ class CompanyController extends Controller
         ]);
         try {
             // Menyimpan data perusahaan ke database
-            $company = Company::find($id)
-                ->update([
-                    'name' => $validated['name'],
-                    'latitude' => $validated['latitude'],
-                    'longitude' => $validated['longitude'],
-                    'radius' => $validated['radius'],
-                    'full_address' => $validated['full_address'],
-                ]);
-
-            return $this->sendResponse($company, 'Data perusahaan berhasil diperbaharui');
+            $data = Company::find($id);
+            $payload=[
+                'before'=>$data->toArray(),
+                'after'=>$validated,
+            ];
+            $data->update([
+                'name' => $validated['name'],
+                'latitude' => $validated['latitude'],
+                'longitude' => $validated['longitude'],
+                'radius' => $validated['radius'],
+                'full_address' => $validated['full_address'],
+            ]);
+            Logger::log('update', new Company(), $payload);
+            return $this->sendResponse($data, 'Data perusahaan berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
         }
@@ -148,8 +154,11 @@ class CompanyController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $company = Company::whereIn('id', $idData)->delete();
-            return $this->sendResponse($company, 'Data perusahaan berhasil dihapus');
+            $data = Company::whereIn('id', $idData);
+            $delete = $data->get();
+            Logger::log('delete', new Company(), $delete->toArray());
+            $data->delete();
+            return $this->sendResponse($data, 'Data perusahaan berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
         }
@@ -190,15 +199,15 @@ class CompanyController extends Controller
             ]);
         }
         // Ambil data hasil filter
-        $companies = $query->get();
+        $data = $query->get();
         // Jika tidak ada data, bisa kasih fallback (opsional)
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data perusahaan yang ditemukan.'], 404);
         }
         // // Generate PDF
-        $pdf = Pdf::loadView('pdf.company', ['company' => $companies]);
+        $pdf = Pdf::loadView('pdf.company', ['company' => $data]);
         $filename = 'company-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new Company(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -238,9 +247,9 @@ class CompanyController extends Controller
             ]);
         }
 
-        $companies = $query->get();
+        $data = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data perusahaan yang ditemukan.'], 404);
         }
 
@@ -257,12 +266,12 @@ class CompanyController extends Controller
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $company) {
+        foreach ($data as $i => $data) {
             $sheet->setCellValue('A' . $row, $i + 1);
-            $sheet->setCellValue('B' . $row, $company->name);
-            $sheet->setCellValue('C' . $row, $company->radius);
-            $sheet->setCellValue('D' . $row, $company->created_at->format('Y-m-d H:i:s'));
-            $sheet->setCellValue('E' . $row, $company->updated_at->format('Y-m-d H:i:s'));
+            $sheet->setCellValue('B' . $row, $data->name);
+            $sheet->setCellValue('C' . $row, $data->radius);
+            $sheet->setCellValue('D' . $row, $data->created_at->format('Y-m-d H:i:s'));
+            $sheet->setCellValue('E' . $row, $data->updated_at->format('Y-m-d H:i:s'));
             $row++;
         }
 
@@ -277,7 +286,7 @@ class CompanyController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new Company(), $data->toArray());
         return $response;
     }
 }

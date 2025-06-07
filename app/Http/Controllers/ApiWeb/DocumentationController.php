@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ApiWeb;
 
 use App\Http\Controllers\Controller;
 use App\Models\Documentation;
+use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -60,8 +61,9 @@ class DocumentationController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data documentation berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new Documentation(), $data->toArray());
+        return $this->sendResponse($data, 'Data documentation berhasil diambil');
     }
 
     /**
@@ -77,9 +79,9 @@ class DocumentationController extends Controller
         ]);
 
         try {
-            $departement = Documentation::create($validated);
-
-            return $this->sendResponse($departement, 'Data documentation berhasil dibuat.');
+            $data = Documentation::create($validated);
+            Logger::log('create', new Documentation(), $data->toArray());
+            return $this->sendResponse($data, 'Data documentation berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
         }
@@ -93,7 +95,7 @@ class DocumentationController extends Controller
         try {
             // Menyimpan data documentation ke database
             $dt = Documentation::find($id);
-
+            Logger::log('show', new Documentation(), $dt->toArray());
             return $this->sendResponse($dt, 'Data documentation berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -113,8 +115,13 @@ class DocumentationController extends Controller
         ]);
         try {
             // Menyimpan data documentation ke database
-            $dt = Documentation::find($id)
-                ->update($validated);
+            $dt = Documentation::find($id);
+            $payload = [
+                'before'=>$dt->toArray(),
+                'after'=>$validated,
+            ];
+            Logger::log('create', New Documentation(), $payload);
+            $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data documentation berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -129,7 +136,10 @@ class DocumentationController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = Documentation::whereIn('id', $idData)->delete();
+            $dt = Documentation::whereIn('id', $idData);
+            $delete = $dt->get();
+            Logger::log('delete', New Documentation(), $delete->toArray());
+            $delete->delete();
             return $this->sendResponse($dt, 'Data documentation berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -150,7 +160,7 @@ class DocumentationController extends Controller
         // Generate PDF
         $pdf = Pdf::loadView('pdf.position', ['position' => $data]);
         $filename = 'position-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new Documentation(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');

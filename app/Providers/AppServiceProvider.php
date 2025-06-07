@@ -13,6 +13,7 @@ use App\Models\CoreApp\JobPosition;
 use App\Models\CoreApp\TimeWork;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use App\Observers\UserObserver;
 use App\Policies\AdministrationApp\AttendancePolicy;
 use App\Policies\AdministrationApp\PermitPolicy;
 use App\Policies\AdministrationApp\PermitTypePolicy;
@@ -44,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         date_default_timezone_set(config('app.timezone'));

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CoreApp\Company;
 use App\Models\CoreApp\Departement;
 use App\Models\CoreApp\TimeWork;
+use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -76,8 +77,9 @@ class JamKerjaController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data TimeWork berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new TimeWork(), $data->toArray());
+        return $this->sendResponse($data, 'Data TimeWork berhasil diambil');
     }
 
     /**
@@ -95,7 +97,7 @@ class JamKerjaController extends Controller
 
         try {
             $TimeWork = TimeWork::create($validated);
-
+            Logger::log('create', new TimeWork(), $TimeWork->toArray());
             return $this->sendResponse($TimeWork, 'Data TimeWork berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -112,6 +114,7 @@ class JamKerjaController extends Controller
             $dt = TimeWork::find($id);
             $cp = Company::all();
             $dp = Departement::all();
+            Logger::log('show', new TimeWork(), $dt->toArray());
             return $this->sendResponse([
                 'timework' => $dt,
                 'company_select' => $cp,
@@ -136,8 +139,13 @@ class JamKerjaController extends Controller
         ]);
         try {
             // Menyimpan data TimeWork ke database
-            $dt = TimeWork::find($id)
-                ->update($validated);
+            $dt = TimeWork::find($id);
+            $payload = [
+                'before'=>$dt->toArray(),
+                'after'=>$validated
+            ];
+            Logger::log('update', new TimeWork(), $payload);
+            $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data TimeWork berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -152,7 +160,10 @@ class JamKerjaController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = TimeWork::whereIn('id', $idData)->delete();
+            $dt = TimeWork::whereIn('id', $idData);
+            $delete=$dt->get();
+            Logger::log('delete', new TimeWork(), $delete->toArray);
+            $dt->delete();
             return $this->sendResponse($dt, 'Data TimeWork berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -201,7 +212,7 @@ class JamKerjaController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.jam', ['jam' => $data]);
         $filename = 'jam-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new TimeWork(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -241,9 +252,9 @@ class JamKerjaController extends Controller
             ]);
         }
 
-        $companies = $query->get();
+        $data = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data TimeWork yang ditemukan.'], 404);
         }
 
@@ -260,7 +271,7 @@ class JamKerjaController extends Controller
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $dt) {
+        foreach ($data as $i => $dt) {
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $dt->name);
             $sheet->setCellValue('C' . $row, $dt->radius);
@@ -280,7 +291,7 @@ class JamKerjaController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new TimeWork(), $data->toArray());
         return $response;
     }
 }

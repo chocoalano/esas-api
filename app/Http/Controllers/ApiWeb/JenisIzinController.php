@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ApiWeb;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdministrationApp\PermitType;
+use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -62,8 +63,9 @@ class JenisIzinController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data permittype berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new PermitType(), $data->toArray());
+        return $this->sendResponse($data, 'Data permittype berhasil diambil');
     }
 
     /**
@@ -82,9 +84,9 @@ class JenisIzinController extends Controller
         ]);
 
         try {
-            $permittype = PermitType::create($validated);
-
-            return $this->sendResponse($permittype, 'Data permittype berhasil dibuat.');
+            $data = PermitType::create($validated);
+            Logger::log('create', new PermitType(), $data->toArray());
+            return $this->sendResponse($data, 'Data permittype berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
         }
@@ -98,6 +100,7 @@ class JenisIzinController extends Controller
         try {
             // Menyimpan data permittype ke database
             $dt = PermitType::find($id);
+            Logger::log('show', new PermitType(), $dt->toArray());
             return $this->sendResponse($dt, 'Data permittype berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -120,8 +123,13 @@ class JenisIzinController extends Controller
         ]);
         try {
             // Menyimpan data permittype ke database
-            $dt = PermitType::find($id)
-                ->update($validated);
+            $dt = PermitType::find($id);
+            $payload=[
+                'before'=>$dt->toArray(),
+                'after'=>$validated
+            ];
+            Logger::log('update', new PermitType(), $payload);
+            $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data permittype berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -136,7 +144,10 @@ class JenisIzinController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = PermitType::whereIn('id', $idData)->delete();
+            $dt = PermitType::whereIn('id', $idData);
+            $delete = $dt->get();
+            Logger::log('delete', new PermitType(), $delete->toArray());
+            $dt->delete();
             return $this->sendResponse($dt, 'Data permittype berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -182,7 +193,7 @@ class JenisIzinController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.jenis_izin', ['jenis_izin' => $data]);
         $filename = 'jenis_izin-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new PermitType(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -222,9 +233,9 @@ class JenisIzinController extends Controller
             ]);
         }
 
-        $companies = $query->get();
+        $data = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data permittype yang ditemukan.'], 404);
         }
 
@@ -241,7 +252,7 @@ class JenisIzinController extends Controller
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $dt) {
+        foreach ($data as $i => $dt) {
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $dt->name);
             $sheet->setCellValue('C' . $row, $dt->radius);
@@ -261,7 +272,7 @@ class JenisIzinController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new PermitType(), $data->toArray());
         return $response;
     }
 }

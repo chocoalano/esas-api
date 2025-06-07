@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ApiWeb;
 use App\Http\Controllers\Controller;
 use App\Jobs\InsertUpdateScheduleJob;
 use App\Models\AdministrationApp\UserTimeworkSchedule;
+use App\Support\Logger;
 use App\Support\UploadFile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -86,8 +87,9 @@ class JadwalKerjaController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $UserTimeworkSchedules = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($UserTimeworkSchedules, 'Data laporan bug berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new UserTimeworkSchedule(), $data->toArray());
+        return $this->sendResponse($data, 'Data laporan bug berhasil diambil');
     }
 
     /**
@@ -134,6 +136,7 @@ class JadwalKerjaController extends Controller
                 InsertUpdateScheduleJob::dispatch($jadwal);
                 return $this->sendResponse($validated, 'Data jadwal kerja berhasil dibuat.');
             }
+            Logger::log('create', new UserTimeworkSchedule(), $jadwal);
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', [
                 'error' => "Jumlah data yang valid: " . count($jadwal)
             ], 500);
@@ -155,6 +158,7 @@ class JadwalKerjaController extends Controller
                 'company',
                 'user'
             ])->find($id);
+            Logger::log('show', new UserTimeworkSchedule(), $dt->toArray());
             return $this->sendResponse($dt, 'Data laporan bug berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -192,10 +196,8 @@ class JadwalKerjaController extends Controller
         $idData = explode(',', $id);
         try {
             $dt = UserTimeworkSchedule::whereIn('id', $idData);
-            $file = $dt->get();
-            foreach ($file as $k) {
-                UploadFile::removeFromSpaces($k['image']);
-            }
+            $delete=$dt->get();
+            Logger::log('delete', new UserTimeworkSchedule(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data laporan bug berhasil dihapus');
         } catch (\Exception $e) {

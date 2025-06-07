@@ -7,6 +7,7 @@ use App\Http\Resources\User\UserResource;
 use App\Models\CoreApp\Notification;
 use App\Models\User;
 use App\Repositories\Interfaces\CoreApp\UserInterface;
+use App\Support\Logger;
 use App\Support\UploadFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -40,6 +41,7 @@ class AuthController extends Controller
             $success['token_type'] = 'Bearer';
             $success['name'] = $user->name;
             $success['userId'] = $user->id;
+            Logger::log('login', Auth::user(), $user->toArray());
             return $this->sendResponse($success, 'User login successfully.');
         }
         return $this->sendError('Unauthorised.', ['error' => $proses['message']]);
@@ -69,7 +71,7 @@ class AuthController extends Controller
         if (!$user) {
             return $this->sendError('Unauthorized', ['error' => 'User not authenticated'], 401);
         }
-
+        Logger::log('logout', Auth::user(), $user->toArray());
         // Hapus semua token pengguna (berlaku untuk Sanctum)
         $user->tokens()->delete();
 
@@ -92,7 +94,11 @@ class AuthController extends Controller
         try {
             $validated = $this->validateUser($request);
             $user = User::findOrFail(Auth::user()->id);
-
+            $payload=[
+                'before'=>$user->toArray(),
+                'after'=>$validated
+            ];
+            Logger::log('update', Auth::user(), $payload);
             // Update basic fields
             $user->update([
                 'company_id' => $validated['company_id'],
@@ -157,8 +163,9 @@ class AuthController extends Controller
         $id = Auth::user()->id;
         $query->where('notifiable_id', $id);
         // Pagination
-        $companies = $query->paginate(20, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data pemberitahuan berhasil diambil');
+        $data = $query->paginate(20, ['*'], 'page', $page);
+        Logger::log('list paginate', new Notification(), $data->toArray());
+        return $this->sendResponse($data, 'Data pemberitahuan berhasil diambil');
     }
 
     public function pemberitahuan_read($id){
@@ -167,6 +174,7 @@ class AuthController extends Controller
             $query->read_at = Carbon::now();
             $query->save();
         }
+        Logger::log('show', new Notification(), $query->toArray());
         return $this->sendResponse($query, 'Data pemberitahuan telah dibaca');
     }
 

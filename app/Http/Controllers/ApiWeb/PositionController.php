@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CoreApp\Departement;
 use App\Models\CoreApp\Company;
 use App\Models\CoreApp\JobPosition;
+use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -53,8 +54,8 @@ class PositionController extends Controller
             }
 
             if (!empty($search['departemen'])) {
-                $query->whereHas('departement', function ($departement) use ($search) {
-                    $departement->where('name', $search['departemen']);
+                $query->whereHas('departement', function ($data) use ($search) {
+                    $data->where('name', $search['departemen']);
                 });
             }
             if (!empty($search['createdAt'])) {
@@ -76,8 +77,9 @@ class PositionController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data departemen berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new JobPosition(), $data->toArray());
+        return $this->sendResponse($data, 'Data departemen berhasil diambil');
     }
 
     /**
@@ -92,13 +94,13 @@ class PositionController extends Controller
         ]);
 
         try {
-            $departement = JobPosition::create([
+            $data = JobPosition::create([
                 'company_id' => $validated['company_id'],
                 'departement_id' => $validated['departement_id'],
                 'name' => $validated['name'],
             ]);
-
-            return $this->sendResponse($departement, 'Data departemen berhasil dibuat.');
+            Logger::log('create', new JobPosition(), $data->toArray());
+            return $this->sendResponse($data, 'Data departemen berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
         }
@@ -114,11 +116,11 @@ class PositionController extends Controller
             $dt = JobPosition::find($id);
             $cy = Company::all();
             $dp = Departement::all();
-
+            Logger::log('show', new JobPosition(), $dt->toArray());
             return $this->sendResponse([
-                'departemen'=>$dt,
-                'select_company'=>$cy,
-                'select_departement'=>$dp
+                'departemen' => $dt,
+                'select_company' => $cy,
+                'select_departement' => $dp
             ], 'Data departemen berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -137,12 +139,17 @@ class PositionController extends Controller
         ]);
         try {
             // Menyimpan data departemen ke database
-            $dt = JobPosition::find($id)
-                ->update([
-                    'company_id' => $validated['company_id'],
-                    'departement_id' => $validated['departement_id'],
-                    'name' => $validated['name'],
-                ]);
+            $dt = JobPosition::find($id);
+            $payload=[
+                'before'=>$dt->toArray(),
+                'after'=>$validated
+            ];
+            Logger::log('update', new JobPosition(), $payload);
+            $dt->update([
+                'company_id' => $validated['company_id'],
+                'departement_id' => $validated['departement_id'],
+                'name' => $validated['name'],
+            ]);
 
             return $this->sendResponse($dt, 'Data departemen berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -157,7 +164,10 @@ class PositionController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = JobPosition::whereIn('id', $idData)->delete();
+            $dt = JobPosition::whereIn('id', $idData);
+            $delete=$dt->get();
+            Logger::log('delete', new JobPosition(), $delete->toArray());
+            $dt->delete();
             return $this->sendResponse($dt, 'Data departemen berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -189,7 +199,7 @@ class PositionController extends Controller
         // Generate PDF
         $pdf = Pdf::loadView('pdf.position', ['position' => $data]);
         $filename = 'position-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new JobPosition(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -229,9 +239,9 @@ class PositionController extends Controller
             ]);
         }
 
-        $companies = $query->get();
+        $data = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data departemen yang ditemukan.'], 404);
         }
 
@@ -248,7 +258,7 @@ class PositionController extends Controller
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $dt) {
+        foreach ($data as $i => $dt) {
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $dt->name);
             $sheet->setCellValue('C' . $row, $dt->radius);
@@ -268,7 +278,7 @@ class PositionController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new JobPosition(), $data->toArray());
         return $response;
     }
 }

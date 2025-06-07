@@ -15,6 +15,6 @@ Route::post('/upload', function (Request $request) {
     $directory = 'esas-assets/deployment/avatars';
     $upload = UploadFile::uploadToSpaces($file, $directory);
     return $upload;
-});
+})->middleware('logger');
 require __DIR__.'/mobile.php';
 require __DIR__.'/dekstop.php';

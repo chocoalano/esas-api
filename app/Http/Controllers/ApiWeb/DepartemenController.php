@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ApiWeb;
 use App\Http\Controllers\Controller;
 use App\Models\CoreApp\Departement;
 use App\Models\CoreApp\Company;
+use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -67,8 +68,9 @@ class DepartemenController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data departemen berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', $data->first() ?? new Departement(), $data->toArray());
+        return $this->sendResponse($data, 'Data departemen berhasil diambil');
     }
 
     /**
@@ -82,12 +84,12 @@ class DepartemenController extends Controller
         ]);
 
         try {
-            $departement = Departement::create([
+            $data = Departement::create([
                 'company_id' => $validated['company_id'],
                 'name' => $validated['name'],
             ]);
-
-            return $this->sendResponse($departement, 'Data departemen berhasil dibuat.');
+            Logger::log('create', new Departement(), $data->toArray());
+            return $this->sendResponse($data, 'Data departemen berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
         }
@@ -108,7 +110,7 @@ class DepartemenController extends Controller
             ])
                 ->find($id);
             $cy = Company::all();
-
+            Logger::log('show', new Departement(), $dt->toArray());
             return $this->sendResponse([
                 'departemen' => $dt,
                 'select_company' => $cy
@@ -129,12 +131,16 @@ class DepartemenController extends Controller
         ]);
         try {
             // Menyimpan data departemen ke database
-            $dt = Departement::find($id)
-                ->update([
-                    'company_id' => $validated['company_id'],
-                    'name' => $validated['name'],
-                ]);
-
+            $dt = Departement::find($id);
+            $payload = [
+                'before' => $dt->toArray(),
+                'after' => $validated,
+            ];
+            $dt->update([
+                'company_id' => $validated['company_id'],
+                'name' => $validated['name'],
+            ]);
+            Logger::log('update', new Departement(), $payload);
             return $this->sendResponse($dt, 'Data departemen berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -148,7 +154,10 @@ class DepartemenController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = Departement::whereIn('id', $idData)->delete();
+            $dt = Departement::whereIn('id', $idData);
+            $delete = $dt->get();
+            Logger::log('delete', new Departement(), $delete->toArray());
+            $dt->delete();
             return $this->sendResponse($dt, 'Data departemen berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -178,17 +187,17 @@ class DepartemenController extends Controller
         }
 
         // Ambil data hasil filter
-        $departements = $query->get();
+        $datas = $query->get();
 
         // Jika tidak ada data, kembalikan respon 404
-        if ($departements->isEmpty()) {
+        if ($datas->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data departemen yang ditemukan.'], 404);
         }
 
         // Generate PDF
-        $pdf = Pdf::loadView('pdf.departement', ['departement' => $departements]);
+        $pdf = Pdf::loadView('pdf.departement', ['departement' => $datas]);
         $filename = 'departement-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new Departement(), $datas->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -274,7 +283,7 @@ class DepartemenController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new Departement(), $departments->toArray());
         return $response;
     }
 }

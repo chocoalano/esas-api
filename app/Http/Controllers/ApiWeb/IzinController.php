@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AdministrationApp\Permit;
 use App\Models\AdministrationApp\PermitType;
 use App\Repositories\Interfaces\AdministrationApp\PermitInterface;
+use App\Support\Logger;
 use App\Support\UploadFile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -95,8 +96,9 @@ class IzinController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $companies = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($companies, 'Data izin berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new Permit(), $data->toArray());
+        return $this->sendResponse($data, 'Data izin berhasil diambil');
     }
 
     /**
@@ -137,7 +139,7 @@ class IzinController extends Controller
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
             'notes' => 'nullable|string|max:255',
-            'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+            'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10048',
         ]);
 
         DB::beginTransaction();
@@ -202,6 +204,7 @@ class IzinController extends Controller
             $userIds = array_column($approval, 'user_id');
             $this->notif->broadcast_approvals($userIds, "{$user->name}-{$user->nip}", $permitType->type);
             DB::commit();
+            Logger::log('create', new Permit(), $permit->toArray());
             return $this->sendResponse($permit, 'Data izin berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -223,6 +226,7 @@ class IzinController extends Controller
                 'approvals',
                 'userTimeworkSchedule',
             ])->find($id);
+            Logger::log('show', new Permit(), $dt->toArray());
             return $this->sendResponse($dt, 'Data izin berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -240,27 +244,32 @@ class IzinController extends Controller
             'current_shift_id' => $request->current_shift_id === 'null' ? null : $request->current_shift_id,
             'adjust_shift_id' => $request->adjust_shift_id === 'null' ? null : $request->adjust_shift_id,
         ]);
-
         $validated = $request->validate([
             'company_id' => 'required|exists:companies,id',
             'departement_id' => 'required|exists:departements,id',
             'user_id' => 'required|exists:users,id',
             'permittype_id' => 'required|exists:permit_types,id',
+            'schedule_id' => 'required|exists:user_timework_schedules,id',
             'permit_numbers' => 'required|string|max:50|unique:permits,permit_numbers,' . $id,
-            'timein_adjust' => 'nullable|date_format:H:i',
-            'timeout_adjust' => 'nullable|date_format:H:i|after:timein_adjust',
+            'timein_adjust' => ['nullable', 'date_format:H:i'],
+            'timeout_adjust' => ['nullable', 'date_format:H:i', 'after:timein_adjust'],
             'current_shift_id' => 'nullable|exists:time_workes,id',
             'adjust_shift_id' => 'nullable|exists:time_workes,id',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
             'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
+            'end_time' => 'required|date_format:H:i',
             'notes' => 'nullable|string|max:255',
-            'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:2048',
+            'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx|max:10048',
         ]);
         try {
             // Menyimpan data izin ke database
             $dt = Permit::find($id);
+            $payload=[
+                'before'=>$dt->toArray(),
+                'after'=>$validated,
+            ];
+            Logger::log('update', new Permit(), $payload);
             $dt->user_id = $validated['user_id'];
             $dt->permit_numbers = $validated['permit_numbers'];
             $dt->permit_type_id = $validated['permittype_id'];
@@ -295,7 +304,7 @@ class IzinController extends Controller
     {
         $validated = $request->validate([
             'approval' => 'required|in:y,n,w',
-            'type' => 'required|in:line,manager,hr',
+            'type' => 'required|in:line,manager,hrga',
             'notes' => 'nullable|string',
         ]);
         try {
@@ -305,7 +314,10 @@ class IzinController extends Controller
             }
             $approval = $permit->approvals()
                 ->where('user_id', Auth::id())
-                ->where('user_type', $validated['type'] === 'hrga' ? 'hr' : $validated['type'])
+                ->where(
+                    'user_type',
+                    $validated['type']
+                )
                 ->first();
             if (!$approval) {
                 return $this->sendError('Data approval tidak ditemukan.', [], 404);
@@ -314,6 +326,7 @@ class IzinController extends Controller
                 'user_approve' => $validated['approval'],
                 'notes' => $validated['notes'],
             ]);
+            Logger::log('approved', new Permit(), $approval->toArray());
             return $this->sendResponse($validated, 'Data approval izin berhasil diperbaharui.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan pada proses.', ['error' => $e->getMessage()], 500);
@@ -327,7 +340,10 @@ class IzinController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = Permit::whereIn('id', $idData)->delete();
+            $dt = Permit::whereIn('id', $idData);
+            $delete = $dt->get();
+            Logger::log('delete', new Permit(), $delete->toArray());
+            $dt->delete();
             return $this->sendResponse($dt, 'Data izin berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -377,7 +393,7 @@ class IzinController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.izin', ['izin' => $data]);
         $filename = 'izin-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new Permit(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -417,9 +433,9 @@ class IzinController extends Controller
             ]);
         }
 
-        $companies = $query->get();
+        $data = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data izin yang ditemukan.'], 404);
         }
 
@@ -436,7 +452,7 @@ class IzinController extends Controller
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $dt) {
+        foreach ($data as $i => $dt) {
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $dt->name);
             $sheet->setCellValue('C' . $row, $dt->radius);
@@ -456,7 +472,7 @@ class IzinController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new Permit(), $data->toArray());
         return $response;
     }
 }

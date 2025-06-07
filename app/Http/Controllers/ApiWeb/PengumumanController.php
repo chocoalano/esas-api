@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ApiWeb;
 use App\Http\Controllers\Controller;
 use App\Models\AdministrationApp\Announcement;
 use App\Models\CoreApp\Company;
+use App\Support\Logger;
 use Auth;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -72,8 +73,9 @@ class PengumumanController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         // Pagination
-        $announcements = $query->paginate($limit, ['*'], 'page', $page);
-        return $this->sendResponse($announcements, 'Data pengumuman berhasil diambil');
+        $data = $query->paginate($limit, ['*'], 'page', $page);
+        Logger::log('list paginate', new Announcement(), $data->toArray());
+        return $this->sendResponse($data, 'Data pengumuman berhasil diambil');
     }
 
     /**
@@ -90,7 +92,7 @@ class PengumumanController extends Controller
         $validated['user_id'] = Auth::user()->id;
         try {
             $dt = Announcement::create($validated);
-
+            Logger::log('create', new Announcement(), $dt->toArray());
             return $this->sendResponse($dt, 'Data pengumuman berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -109,7 +111,7 @@ class PengumumanController extends Controller
                 'user'
             ])->find($id);
             $cy = Company::all();
-
+            Logger::log('show', new Announcement(), $dt->toArray());
             return $this->sendResponse([
                 'pengumuman' => $dt,
                 'select_company' => $cy
@@ -133,8 +135,13 @@ class PengumumanController extends Controller
         $validated['user_id'] = Auth::user()->id;
         try {
             // Menyimpan data pengumuman ke database
-            $dt = Announcement::find($id)
-                ->update($validated);
+            $dt = Announcement::find($id);
+            $payload = [
+                'before' => $dt->toArray(),
+                'after' => $validated,
+            ];
+            Logger::log('update', new Announcement(), $payload);
+            $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data pengumuman berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -149,7 +156,10 @@ class PengumumanController extends Controller
     {
         $idData = explode(',', $id);
         try {
-            $dt = Announcement::whereIn('id', $idData)->delete();
+            $dt = Announcement::whereIn('id', $idData);
+            $delete = $dt->get;
+            Logger::log('delete', new Announcement(), $delete->toArray());
+            $dt->delete();
             return $this->sendResponse($dt, 'Data pengumuman berhasil dihapus');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -191,15 +201,15 @@ class PengumumanController extends Controller
             ]);
         }
         // Ambil data hasil filter
-        $companies = $query->get();
+        $data = $query->get();
         // Jika tidak ada data, bisa kasih fallback (opsional)
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data pengumuman yang ditemukan.'], 404);
         }
         // // Generate PDF
-        $pdf = Pdf::loadView('pdf.company', ['company' => $companies]);
+        $pdf = Pdf::loadView('pdf.company', ['company' => $data]);
         $filename = 'company-' . now()->format('YmdHis') . '.pdf';
-
+        Logger::log('pdf download', new Announcement(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -239,9 +249,9 @@ class PengumumanController extends Controller
             ]);
         }
 
-        $companies = $query->get();
+        $data = $query->get();
 
-        if ($companies->isEmpty()) {
+        if ($data->isEmpty()) {
             return response()->json(['message' => 'Tidak ada data pengumuman yang ditemukan.'], 404);
         }
 
@@ -258,7 +268,7 @@ class PengumumanController extends Controller
 
         // Isi data
         $row = 2;
-        foreach ($companies as $i => $dt) {
+        foreach ($data as $i => $dt) {
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $dt->name);
             $sheet->setCellValue('C' . $row, $dt->radius);
@@ -278,7 +288,7 @@ class PengumumanController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
+        Logger::log('xlsx download', new Announcement(), $data->toArray());
         return $response;
     }
 }
