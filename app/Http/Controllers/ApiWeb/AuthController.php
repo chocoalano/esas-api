@@ -204,6 +204,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'nip' => ['required', 'string', 'max:50'],
             'email' => ['required', 'email', 'max:255'],
+            'password' => ['nullable', 'max:20'],
             'status' => ['required', 'in:active,inactive'],
             'details.phone' => ['required', 'string', 'max:20'],
             'details.placebirth' => ['required', 'string', 'max:100'],
