@@ -219,13 +219,24 @@ class PenggunaController extends Controller
             if (!$user) {
                 return $this->sendError('User tidak ditemukan.', [], 404);
             }
+
+            // Cek apakah user memiliki role super_admin (Spatie)
+            if ($user->hasRole('super_admin')) {
+                return $this->sendError('Password tidak dapat direset untuk pengguna dengan role super_admin.', [], 403);
+            }
+
             // Reset password ke NIP (dihash)
             $user->password = Hash::make($user->nip);
             $user->save();
+
+            // Log proses reset
             Logger::log('reset password', new User(), $user->toArray());
+
             return $this->sendResponse($user, 'Password user berhasil direset ke NIP.');
         } catch (\Exception $e) {
-            return $this->sendError('Terjadi kesalahan saat mereset password.', ['error' => $e->getMessage()], 500);
+            return $this->sendError('Terjadi kesalahan saat mereset password.', [
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -238,9 +249,9 @@ class PenggunaController extends Controller
 
         try {
             $user = User::findOrFail($id);
-            $payload=[
-                'before'=>$user->toArray(),
-                'after'=>$validated,
+            $payload = [
+                'before' => $user->toArray(),
+                'after' => $validated,
             ];
             Logger::log('update', new User(), $payload);
             // Update basic fields
