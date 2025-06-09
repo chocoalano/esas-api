@@ -88,7 +88,7 @@ class DepartemenController extends Controller
                 'company_id' => $validated['company_id'],
                 'name' => $validated['name'],
             ]);
-            Logger::log('create', new Departement(), $data->toArray());
+            Logger::log('create', $data ?? new Departement(), $data->toArray());
             return $this->sendResponse($data, 'Data departemen berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -110,7 +110,7 @@ class DepartemenController extends Controller
             ])
                 ->find($id);
             $cy = Company::all();
-            Logger::log('show', new Departement(), $dt->toArray());
+            Logger::log('show', $dt ?? new Departement(), $dt->toArray());
             return $this->sendResponse([
                 'departemen' => $dt,
                 'select_company' => $cy
@@ -140,7 +140,7 @@ class DepartemenController extends Controller
                 'company_id' => $validated['company_id'],
                 'name' => $validated['name'],
             ]);
-            Logger::log('update', new Departement(), $payload);
+            Logger::log('update', $dt ?? new Departement(), $payload);
             return $this->sendResponse($dt, 'Data departemen berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -156,7 +156,7 @@ class DepartemenController extends Controller
         try {
             $dt = Departement::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', new Departement(), $delete->toArray());
+            Logger::log('delete', $dt ?? new Departement(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data departemen berhasil dihapus');
         } catch (\Exception $e) {

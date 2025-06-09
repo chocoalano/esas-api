@@ -92,7 +92,7 @@ class CompanyController extends Controller
                 'radius' => $validated['radius'],
                 'full_address' => $validated['full_address'],
             ]);
-            Logger::log('create', new Company(), $data->toArray());
+            Logger::log('create', $data ?? new Company(), $data->toArray());
             return $this->sendResponse($data, 'Data perusahaan berhasil dibuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -107,7 +107,7 @@ class CompanyController extends Controller
         try {
             // Menyimpan data perusahaan ke database
             $data = Company::find($id);
-            Logger::log('show', new Company(), $data->toArray());
+            Logger::log('show', $data ?? new Company(), $data->toArray());
             return $this->sendResponse($data, 'Data perusahaan berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -140,7 +140,7 @@ class CompanyController extends Controller
                 'radius' => $validated['radius'],
                 'full_address' => $validated['full_address'],
             ]);
-            Logger::log('update', new Company(), $payload);
+            Logger::log('update', $data ?? new Company(), $payload);
             return $this->sendResponse($data, 'Data perusahaan berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -156,7 +156,7 @@ class CompanyController extends Controller
         try {
             $data = Company::whereIn('id', $idData);
             $delete = $data->get();
-            Logger::log('delete', new Company(), $delete->toArray());
+            Logger::log('delete', $data ?? new Company(), $delete->toArray());
             $data->delete();
             return $this->sendResponse($data, 'Data perusahaan berhasil dihapus');
         } catch (\Exception $e) {

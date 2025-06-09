@@ -7,8 +7,10 @@ use App\Http\Requests\AdministrationApp\AttendanceRequest;
 use App\Http\Resources\Attendance\AttendanceDetailResource;
 use App\Http\Resources\Attendance\AttendanceLIstPaginateResource;
 use App\Http\Resources\Attendance\AttendanceResource;
+use App\Models\AdministrationApp\LogUserAttendance;
 use App\Repositories\Interfaces\AdministrationApp\AttendanceInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -68,6 +70,10 @@ class AttendanceController extends Controller
             $created = $input['type'] === 'in' ?
                 $this->proses->presence_in($input) :
                 $this->proses->presence_out($input);
+            LogUserAttendance::create([
+                'user_id' => Auth::user()->id,
+                'type' => $input['type'],
+            ]);
             return $created ?
                 $this->sendResponse($created, 'Attendance created successfully.') :
                 $this->sendError('Process error.', ['error' => $created], 500);

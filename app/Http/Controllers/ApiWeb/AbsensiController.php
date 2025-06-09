@@ -153,7 +153,7 @@ class AbsensiController extends Controller
             }
 
             $absen->save();
-            Logger::log('create', new UserAttendance(), $absen->toArray());
+            Logger::log('create', $absen, $absen->toArray());
             return $this->sendResponse($absen, 'Data absensi berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', [
@@ -177,7 +177,7 @@ class AbsensiController extends Controller
                 'schedule.timework',
                 'qrPresenceTransactions'
             ])->find($id);
-            Logger::log('show', new UserAttendance(), $dt->toArray());
+            Logger::log('show', $dt ?? new UserAttendance(), $dt->toArray());
             return $this->sendResponse($dt, 'Data absensi berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -246,7 +246,7 @@ class AbsensiController extends Controller
                 }
             }
             $absen->save();
-            Logger::log('update', new UserAttendance(), $payload);
+            Logger::log('update', $absen ?? new UserAttendance(), $payload);
             return $this->sendResponse($absen, 'Data absensi berhasil diperbaharui.');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -262,7 +262,7 @@ class AbsensiController extends Controller
         try {
             $dt = UserAttendance::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', new UserAttendance(), $delete->toArray());
+            Logger::log('delete', $dt ?? new UserAttendance(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data absensi berhasil dihapus');
         } catch (\Exception $e) {

@@ -99,7 +99,7 @@ class LevelController extends Controller
                 'departement_id' => $validated['departement_id'],
                 'name' => $validated['name'],
             ]);
-            Logger::log('create', new JobLevel(), $data->toArray());
+            Logger::log('create', $data ?? new JobLevel(), $data->toArray());
             return $this->sendResponse($data, 'Data departemen berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -119,7 +119,7 @@ class LevelController extends Controller
             ])->find($id);
             $cy = Company::all();
             $dp = Departement::all();
-            Logger::log('show', new JobLevel(), $dt->toArray());
+            Logger::log('show', $dt ?? new JobLevel(), $dt->toArray());
             return $this->sendResponse([
                 'level' => $dt,
                 'select_company' => $cy,
@@ -147,7 +147,7 @@ class LevelController extends Controller
                 'before' => $dt->toArray(),
                 'after' => $validated
             ];
-            Logger::log('update', new JobLevel(), $payload);
+            Logger::log('update', $dt ?? new JobLevel(), $payload);
             $dt->update([
                 'company_id' => $validated['company_id'],
                 'departement_id' => $validated['departement_id'],
@@ -169,7 +169,7 @@ class LevelController extends Controller
         try {
             $dt = JobLevel::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', new JobLevel(), $delete->toArray());
+            Logger::log('delete', $dt ?? new JobLevel(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data departemen berhasil dihapus');
         } catch (\Exception $e) {

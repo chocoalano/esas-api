@@ -204,7 +204,7 @@ class IzinController extends Controller
             $userIds = array_column($approval, 'user_id');
             $this->notif->broadcast_approvals($userIds, "{$user->name}-{$user->nip}", $permitType->type);
             DB::commit();
-            Logger::log('create', new Permit(), $permit->toArray());
+            Logger::log('create', $permit ?? new Permit(), $permit->toArray());
             return $this->sendResponse($permit, 'Data izin berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -226,7 +226,7 @@ class IzinController extends Controller
                 'approvals',
                 'userTimeworkSchedule',
             ])->find($id);
-            Logger::log('show', new Permit(), $dt->toArray());
+            Logger::log('show', $dt ?? new Permit(), $dt->toArray());
             return $this->sendResponse($dt, 'Data izin berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -269,7 +269,6 @@ class IzinController extends Controller
                 'before'=>$dt->toArray(),
                 'after'=>$validated,
             ];
-            Logger::log('update', new Permit(), $payload);
             $dt->user_id = $validated['user_id'];
             $dt->permit_numbers = $validated['permit_numbers'];
             $dt->permit_type_id = $validated['permittype_id'];
@@ -292,6 +291,7 @@ class IzinController extends Controller
             }
 
             $dt->save();
+            Logger::log('update', $dt ?? new Permit(), $payload);
             return $this->sendResponse($dt, 'Data izin berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -326,7 +326,7 @@ class IzinController extends Controller
                 'user_approve' => $validated['approval'],
                 'notes' => $validated['notes'],
             ]);
-            Logger::log('approved', new Permit(), $approval->toArray());
+            Logger::log('approved', $permit ?? new Permit(), $approval->toArray());
             return $this->sendResponse($validated, 'Data approval izin berhasil diperbaharui.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan pada proses.', ['error' => $e->getMessage()], 500);
@@ -342,7 +342,7 @@ class IzinController extends Controller
         try {
             $dt = Permit::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', new Permit(), $delete->toArray());
+            Logger::log('delete', $dt ?? new Permit(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data izin berhasil dihapus');
         } catch (\Exception $e) {

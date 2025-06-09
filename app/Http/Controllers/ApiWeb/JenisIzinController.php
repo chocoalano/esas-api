@@ -85,7 +85,7 @@ class JenisIzinController extends Controller
 
         try {
             $data = PermitType::create($validated);
-            Logger::log('create', new PermitType(), $data->toArray());
+            Logger::log('create', $data ?? new PermitType(), $data->toArray());
             return $this->sendResponse($data, 'Data permittype berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -100,7 +100,7 @@ class JenisIzinController extends Controller
         try {
             // Menyimpan data permittype ke database
             $dt = PermitType::find($id);
-            Logger::log('show', new PermitType(), $dt->toArray());
+            Logger::log('show', $dt ?? new PermitType(), $dt->toArray());
             return $this->sendResponse($dt, 'Data permittype berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -128,7 +128,7 @@ class JenisIzinController extends Controller
                 'before'=>$dt->toArray(),
                 'after'=>$validated
             ];
-            Logger::log('update', new PermitType(), $payload);
+            Logger::log('update', $dt ?? new PermitType(), $payload);
             $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data permittype berhasil diperbaharui');
@@ -146,7 +146,7 @@ class JenisIzinController extends Controller
         try {
             $dt = PermitType::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', new PermitType(), $delete->toArray());
+            Logger::log('delete', $dt ?? new PermitType(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data permittype berhasil dihapus');
         } catch (\Exception $e) {

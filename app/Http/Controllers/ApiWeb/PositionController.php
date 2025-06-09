@@ -99,7 +99,7 @@ class PositionController extends Controller
                 'departement_id' => $validated['departement_id'],
                 'name' => $validated['name'],
             ]);
-            Logger::log('create', new JobPosition(), $data->toArray());
+            Logger::log('create', $data ?? new JobPosition(), $data->toArray());
             return $this->sendResponse($data, 'Data departemen berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -116,7 +116,7 @@ class PositionController extends Controller
             $dt = JobPosition::find($id);
             $cy = Company::all();
             $dp = Departement::all();
-            Logger::log('show', new JobPosition(), $dt->toArray());
+            Logger::log('show', $dt ?? new JobPosition(), $dt->toArray());
             return $this->sendResponse([
                 'departemen' => $dt,
                 'select_company' => $cy,
@@ -144,7 +144,7 @@ class PositionController extends Controller
                 'before'=>$dt->toArray(),
                 'after'=>$validated
             ];
-            Logger::log('update', new JobPosition(), $payload);
+            Logger::log('update', $dt ?? new JobPosition(), $payload);
             $dt->update([
                 'company_id' => $validated['company_id'],
                 'departement_id' => $validated['departement_id'],
@@ -166,7 +166,7 @@ class PositionController extends Controller
         try {
             $dt = JobPosition::whereIn('id', $idData);
             $delete=$dt->get();
-            Logger::log('delete', new JobPosition(), $delete->toArray());
+            Logger::log('delete', $dt ?? new JobPosition(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data departemen berhasil dihapus');
         } catch (\Exception $e) {

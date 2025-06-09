@@ -97,7 +97,7 @@ class JamKerjaController extends Controller
 
         try {
             $TimeWork = TimeWork::create($validated);
-            Logger::log('create', new TimeWork(), $TimeWork->toArray());
+            Logger::log('create', $TimeWork ?? new TimeWork(), $TimeWork->toArray());
             return $this->sendResponse($TimeWork, 'Data TimeWork berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -114,7 +114,7 @@ class JamKerjaController extends Controller
             $dt = TimeWork::find($id);
             $cp = Company::all();
             $dp = Departement::all();
-            Logger::log('show', new TimeWork(), $dt->toArray());
+            Logger::log('show', $dt ?? new TimeWork(), $dt->toArray());
             return $this->sendResponse([
                 'timework' => $dt,
                 'company_select' => $cp,
@@ -144,8 +144,8 @@ class JamKerjaController extends Controller
                 'before'=>$dt->toArray(),
                 'after'=>$validated
             ];
-            Logger::log('update', new TimeWork(), $payload);
             $dt->update($validated);
+            Logger::log('update', $dt ?? new TimeWork(), $payload);
 
             return $this->sendResponse($dt, 'Data TimeWork berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -162,7 +162,7 @@ class JamKerjaController extends Controller
         try {
             $dt = TimeWork::whereIn('id', $idData);
             $delete=$dt->get();
-            Logger::log('delete', new TimeWork(), $delete->toArray);
+            Logger::log('delete', $dt ?? new TimeWork(), $delete->toArray);
             $dt->delete();
             return $this->sendResponse($dt, 'Data TimeWork berhasil dihapus');
         } catch (\Exception $e) {

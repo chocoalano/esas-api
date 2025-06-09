@@ -100,7 +100,6 @@ class AuthController extends Controller
                 'before' => $user->toArray(),
                 'after' => $validated
             ];
-            Logger::log('update', $user, $payload);
 
             // Data yang akan di-update
             $updateData = [
@@ -138,6 +137,7 @@ class AuthController extends Controller
                 }
             }
 
+            Logger::log('update', $user, $payload);
             return $this->sendResponse($user->fresh(), 'Data User berhasil diperbaharui');
 
         } catch (\Exception $e) {
@@ -193,7 +193,7 @@ class AuthController extends Controller
             $query->read_at = Carbon::now();
             $query->save();
         }
-        Logger::log('show', new Notification(), $query->toArray());
+        Logger::log('show', $query ?? new Notification(), $query->toArray());
         return $this->sendResponse($query, 'Data pemberitahuan telah dibaca');
     }
 

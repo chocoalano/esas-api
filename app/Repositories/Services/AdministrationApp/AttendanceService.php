@@ -283,9 +283,13 @@ class AttendanceService implements AttendanceInterface
             ->whereDate('created_at', Carbon::now()->format('Y-m-d'))
             ->first();
         if ($attendance) {
-            UploadFile::unlink($attendance->image_in);
+            UploadFile::removeFromSpaces($attendance->image_in);
+            $upload = UploadFile::uploadToSpaces($data['image'], 'attendances', Carbon::now()->format('YmdHis'));
+            if (is_array($upload) && isset($upload['url']) && isset($upload['path'])) {
+                $attendance->update(['image_in' => $upload['path']]);
+            }
         }
-        $upload = UploadFile::uploadWithResize($data['image'], 'attendance-in');
+        $upload = UploadFile::uploadToSpaces($data['image'], 'attendances', Carbon::now()->format('YmdHis'));
         $exec = DB::select(
             'CALL UpdateAttendanceIn(?,?,?,?,?,?)',
             [
@@ -293,7 +297,7 @@ class AttendanceService implements AttendanceInterface
                 $data['time_id'],
                 $data['lat'],
                 $data['long'],
-                $upload,
+                $upload['path'],
                 $data['time']
             ]
         );
@@ -531,22 +535,22 @@ class AttendanceService implements AttendanceInterface
                 'jl.name AS level',
                 'ue.join_date',
                 DB::raw("SUM(CASE WHEN pt.type IN (
-                'Dispensasi Menikah', 
+                'Dispensasi Menikah',
                 'Dispensasi menikahkan anak',
-                'Dispensasi khitan/baptis anak', 
+                'Dispensasi khitan/baptis anak',
                 'Dispensasi Keluarga/Anggota Keluarga Dalam Satu Rumah Meninggal',
-                'Dispensasi Melahirkan/Keguguran', 
+                'Dispensasi Melahirkan/Keguguran',
                 'Dispensasi Ibadah Agama',
-                'Dispensasi Wisuda (anak/pribadi)', 
+                'Dispensasi Wisuda (anak/pribadi)',
                 'Dispensasi Lain-lain',
                 'Dispensasi Tugas Kantor (dalam/luar kota)'
             ) THEN 1 ELSE 0 END) AS dispensasi"),
                 DB::raw("SUM(CASE WHEN pt.type IN (
-                'Izin Sakit (surat dokter & resep)', 
+                'Izin Sakit (surat dokter & resep)',
                 'Izin Sakit (tanpa surat dokter)',
-                'Izin Sakit Kecelakaan Kerja (surat dokter & resep)', 
+                'Izin Sakit Kecelakaan Kerja (surat dokter & resep)',
                 'Izin Sakit (rawat inap)',
-                'Izin Koreksi Absen', 
+                'Izin Koreksi Absen',
                 'izin perubahan jam kerja'
             ) THEN 1 ELSE 0 END) AS izin"),
                 DB::raw("SUM(CASE WHEN pt.type IN ('Cuti Tahunan', 'Unpaid Leave (Cuti Tidak Dibayar)') THEN 1 ELSE 0 END) AS cuti"),

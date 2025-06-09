@@ -10,7 +10,6 @@ use App\Support\Logger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Support\UploadFile;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -145,7 +144,7 @@ class PenggunaController extends Controller
             if (isset($validated['employee'])) {
                 $user->employee()->updateOrCreate([], $validated['employee']);
             }
-            Logger::log('create', new User(), $user->toArray());
+            Logger::log('create', $user, $user->toArray());
             return $this->sendResponse($user, 'Data User berhasil dibuat.');
 
         } catch (\Exception $e) {
@@ -180,7 +179,7 @@ class PenggunaController extends Controller
             ])->find($id);
             $cp = Company::all();
             $dp = Departement::all();
-            Logger::log('show', new User(), $dt->toArray());
+            Logger::log('show', $dt ?? new User(), $dt->toArray());
             return $this->sendResponse([
                 'user' => $dt,
                 'company_select' => $cp,
@@ -201,7 +200,7 @@ class PenggunaController extends Controller
             $dt = User::find($id);
             $dt->device_id = null;
             $dt->save();
-            Logger::log('reset device', new User(), $dt->toArray());
+            Logger::log('reset device', $dt ?? new User(), $dt->toArray());
             return $this->sendResponse($dt, 'Data User berhasil direset');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -220,19 +219,26 @@ class PenggunaController extends Controller
                 return $this->sendError('User tidak ditemukan.', [], 404);
             }
 
-            // Cek apakah user memiliki role super_admin (Spatie)
+            // Cek apakah user memiliki role super_admin
             if ($user->hasRole('super_admin')) {
                 return $this->sendError('Password tidak dapat direset untuk pengguna dengan role super_admin.', [], 403);
             }
+
+            // Simpan data lama untuk log
+            $beforeReset = $user->toArray();
 
             // Reset password ke NIP (dihash)
             $user->password = Hash::make($user->nip);
             $user->save();
 
-            // Log proses reset
-            Logger::log('reset password', new User(), $user->toArray());
+            // Log proses reset password
+            $payload = [
+                'before' => $beforeReset,
+                'after' => $user->toArray(),
+            ];
+            Logger::log('reset password', $user ?? new User(), $payload);
 
-            return $this->sendResponse($user, 'Password user berhasil direset ke NIP.');
+            return $this->sendResponse($user->fresh(), 'Password user berhasil direset ke NIP.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat mereset password.', [
                 'error' => $e->getMessage()
@@ -253,7 +259,7 @@ class PenggunaController extends Controller
                 'before' => $user->toArray(),
                 'after' => $validated,
             ];
-            Logger::log('update', new User(), $payload);
+
             // Update basic fields
             $user->update([
                 'company_id' => $validated['company_id'],
@@ -263,7 +269,7 @@ class PenggunaController extends Controller
                 'status' => $validated['status'],
             ]);
 
-            // Update details (pastikan relasinya ada, misal hasOne)
+            // Update details (pastikan relasinya ada)
             $user->details()->updateOrCreate([], $validated['details']);
             $user->address()->updateOrCreate([], $validated['address']);
             $user->salaries()->updateOrCreate([], $validated['salaries']);
@@ -277,12 +283,15 @@ class PenggunaController extends Controller
                     $user->update(['avatar' => $upload['path']]);
                 }
             }
+
+            // 🔥 Fix di sini
+            Logger::log('update', $user, $payload);
+
             return $this->sendResponse($user->fresh(), 'Data User berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat memperbaharui data.', ['error' => $e->getMessage()], 500);
         }
     }
-
 
     /**
      * Remove the specified resource from storage.
@@ -291,7 +300,7 @@ class PenggunaController extends Controller
     {
         try {
             $dt = User::find($id);
-            Logger::log('delete', new User(), $dt->toArray());
+            Logger::log('delete', $dt, $dt->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data User berhasil dihapus');
         } catch (\Exception $e) {

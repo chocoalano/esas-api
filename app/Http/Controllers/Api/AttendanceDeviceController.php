@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdministrationApp\LogUserAttendance;
 use App\Models\AdministrationApp\QrPresence;
 use App\Models\AdministrationApp\UserAttendance;
 use App\Models\User;
@@ -175,6 +176,10 @@ class AttendanceDeviceController extends Controller
 
             // Cek status eksekusi
             $status = !empty($exec) && $exec[0]->success === 1;
+            LogUserAttendance::create([
+                'user_id' => Auth::user()->id,
+                'type' => $validated['type'],
+            ]);
 
             return $status
                 ? $this->sendResponse('success', "Absensi {$validated['type']} berhasil disimpan.")

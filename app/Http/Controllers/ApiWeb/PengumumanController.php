@@ -92,7 +92,7 @@ class PengumumanController extends Controller
         $validated['user_id'] = Auth::user()->id;
         try {
             $dt = Announcement::create($validated);
-            Logger::log('create', new Announcement(), $dt->toArray());
+            Logger::log('create', $dt ?? new Announcement(), $dt->toArray());
             return $this->sendResponse($dt, 'Data pengumuman berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -111,7 +111,7 @@ class PengumumanController extends Controller
                 'user'
             ])->find($id);
             $cy = Company::all();
-            Logger::log('show', new Announcement(), $dt->toArray());
+            Logger::log('show', $dt ?? new Announcement(), $dt->toArray());
             return $this->sendResponse([
                 'pengumuman' => $dt,
                 'select_company' => $cy
@@ -140,7 +140,7 @@ class PengumumanController extends Controller
                 'before' => $dt->toArray(),
                 'after' => $validated,
             ];
-            Logger::log('update', new Announcement(), $payload);
+            Logger::log('update', $dt ?? new Announcement(), $payload);
             $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data pengumuman berhasil diperbaharui');
@@ -158,7 +158,7 @@ class PengumumanController extends Controller
         try {
             $dt = Announcement::whereIn('id', $idData);
             $delete = $dt->get;
-            Logger::log('delete', new Announcement(), $delete->toArray());
+            Logger::log('delete', $dt ?? new Announcement(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data pengumuman berhasil dihapus');
         } catch (\Exception $e) {

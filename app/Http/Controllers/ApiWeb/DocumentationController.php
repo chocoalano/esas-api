@@ -80,7 +80,7 @@ class DocumentationController extends Controller
 
         try {
             $data = Documentation::create($validated);
-            Logger::log('create', new Documentation(), $data->toArray());
+            Logger::log('create', $data ?? new Documentation(), $data->toArray());
             return $this->sendResponse($data, 'Data documentation berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -95,7 +95,7 @@ class DocumentationController extends Controller
         try {
             // Menyimpan data documentation ke database
             $dt = Documentation::find($id);
-            Logger::log('show', new Documentation(), $dt->toArray());
+            Logger::log('show', $dt ?? new Documentation(), $dt->toArray());
             return $this->sendResponse($dt, 'Data documentation berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -120,7 +120,7 @@ class DocumentationController extends Controller
                 'before'=>$dt->toArray(),
                 'after'=>$validated,
             ];
-            Logger::log('create', New Documentation(), $payload);
+            Logger::log('create', $dt ?? New Documentation(), $payload);
             $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data documentation berhasil diperbaharui');
@@ -138,7 +138,7 @@ class DocumentationController extends Controller
         try {
             $dt = Documentation::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', New Documentation(), $delete->toArray());
+            Logger::log('delete', $dt ?? New Documentation(), $delete->toArray());
             $delete->delete();
             return $this->sendResponse($dt, 'Data documentation berhasil dihapus');
         } catch (\Exception $e) {

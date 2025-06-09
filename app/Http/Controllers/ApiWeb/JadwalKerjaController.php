@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Jobs\InsertUpdateScheduleJob;
 use App\Models\AdministrationApp\UserTimeworkSchedule;
 use App\Support\Logger;
-use App\Support\UploadFile;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -158,7 +157,7 @@ class JadwalKerjaController extends Controller
                 'company',
                 'user'
             ])->find($id);
-            Logger::log('show', new UserTimeworkSchedule(), $dt->toArray());
+            Logger::log('show', $dt ?? new UserTimeworkSchedule(), $dt->toArray());
             return $this->sendResponse($dt, 'Data laporan bug berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -197,7 +196,7 @@ class JadwalKerjaController extends Controller
         try {
             $dt = UserTimeworkSchedule::whereIn('id', $idData);
             $delete=$dt->get();
-            Logger::log('delete', new UserTimeworkSchedule(), $delete->toArray());
+            Logger::log('delete', $dt ?? new UserTimeworkSchedule(), $delete->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data laporan bug berhasil dihapus');
         } catch (\Exception $e) {
