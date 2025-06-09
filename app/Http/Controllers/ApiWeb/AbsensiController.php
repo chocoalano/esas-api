@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ApiWeb;
 
 use App\Http\Controllers\Controller;
+use App\Models\AdministrationApp\LogUserAttendance;
 use App\Models\AdministrationApp\UserAttendance;
 use App\Support\Logger;
 use App\Support\UploadFile;
@@ -379,38 +380,38 @@ class AbsensiController extends Controller
             ->addSelect($dates->map(function ($date) {
                 $formatted = $date->format('Y-m-d');
                 return DB::raw("
-                    MAX(CASE
-                        WHEN DATE(ua.created_at) = '{$formatted}'
-                        THEN CONCAT(COALESCE(ua.time_in, '-'), ' - ', COALESCE(ua.time_out, '-'))
-                        ELSE NULL
-                    END) AS `{$formatted}`");
+                MAX(CASE
+                    WHEN DATE(ua.created_at) = '{$formatted}'
+                    THEN CONCAT(COALESCE(ua.time_in, '-'), ' - ', COALESCE(ua.time_out, '-'))
+                    ELSE NULL
+                END) AS `{$formatted}`");
             })->toArray())
             ->addSelect([
                 DB::raw("SEC_TO_TIME(SUM(
-                    CASE
-                        WHEN ua.time_in IS NOT NULL AND tw.in IS NOT NULL AND ua.time_in > tw.in
-                        THEN TIME_TO_SEC(TIMEDIFF(ua.time_in, tw.in))
-                        ELSE 0
-                    END
-                )) AS total_jam_terlambat"),
+                CASE
+                    WHEN ua.time_in IS NOT NULL AND tw.in IS NOT NULL AND ua.time_in > tw.in
+                    THEN TIME_TO_SEC(TIMEDIFF(ua.time_in, tw.in))
+                    ELSE 0
+                END
+            )) AS total_jam_terlambat"),
 
                 DB::raw("SUM(CASE WHEN pt.type IN (
-                    'Dispensasi Menikah', 'Dispensasi menikahkan anak',
-                    'Dispensasi khitan/baptis anak', 'Dispensasi Keluarga/Anggota Keluarga Dalam Satu Rumah Meninggal',
-                    'Dispensasi Melahirkan/Keguguran', 'Dispensasi Ibadah Agama',
-                    'Dispensasi Wisuda (anak/pribadi)', 'Dispensasi Lain-lain',
-                    'Dispensasi Tugas Kantor (dalam/luar kota)'
-                ) THEN 1 ELSE 0 END) AS dispensasi"),
+                'Dispensasi Menikah', 'Dispensasi menikahkan anak',
+                'Dispensasi khitan/baptis anak', 'Dispensasi Keluarga/Anggota Keluarga Dalam Satu Rumah Meninggal',
+                'Dispensasi Melahirkan/Keguguran', 'Dispensasi Ibadah Agama',
+                'Dispensasi Wisuda (anak/pribadi)', 'Dispensasi Lain-lain',
+                'Dispensasi Tugas Kantor (dalam/luar kota)'
+            ) THEN 1 ELSE 0 END) AS dispensasi"),
 
                 DB::raw("SUM(CASE WHEN pt.type IN (
-                    'Izin Sakit (surat dokter & resep)', 'Izin Sakit (tanpa surat dokter)',
-                    'Izin Sakit Kecelakaan Kerja (surat dokter & resep)', 'Izin Sakit (rawat inap)',
-                    'Izin Koreksi Absen', 'izin perubahan jam kerja'
-                ) THEN 1 ELSE 0 END) AS izin"),
+                'Izin Sakit (surat dokter & resep)', 'Izin Sakit (tanpa surat dokter)',
+                'Izin Sakit Kecelakaan Kerja (surat dokter & resep)', 'Izin Sakit (rawat inap)',
+                'Izin Koreksi Absen', 'izin perubahan jam kerja'
+            ) THEN 1 ELSE 0 END) AS izin"),
 
                 DB::raw("SUM(CASE WHEN pt.type IN (
-                    'Cuti Tahunan', 'Unpaid Leave (Cuti Tidak Dibayar)'
-                ) THEN 1 ELSE 0 END) AS cuti"),
+                'Cuti Tahunan', 'Unpaid Leave (Cuti Tidak Dibayar)'
+            ) THEN 1 ELSE 0 END) AS cuti"),
             ])
             ->join('user_employes AS ue', 'u.id', '=', 'ue.user_id')
             ->join('departements AS d', 'ue.departement_id', '=', 'd.id')
@@ -437,7 +438,7 @@ class AbsensiController extends Controller
             ])
             ->orderBy('u.name', 'ASC');
 
-        // Gunakan when + Arr::wrap untuk filter fleksibel
+        // Filter Dinamis
         $query->when($validated['company_id'] ?? null, fn($q, $v) => $q->where('u.company_id', $v));
         $query->when($validated['departement_id'] ?? null, fn($q, $v) => $q->where('d.id', $v));
         $query->when($validated['user_id'] ?? null, fn($q, $v) => $q->where('u.id', $v));
@@ -445,30 +446,61 @@ class AbsensiController extends Controller
         $query->when($validated['status_out'] ?? null, fn($q, $v) => $q->where('ua.status_out', $v));
 
         $data = $query->get();
+
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
 
-        // Set Header
-        $headers = array_keys((array) $data[0]); // Ambil key dari array pertama
-        $columnIndex = 'A';
-
-        foreach ($headers as $header) {
-            $sheet->setCellValue($columnIndex . '1', strtoupper($header));
-            $columnIndex++;
-        }
-
-        // Isi Data
-        $rowNumber = 2;
-        foreach ($data as $row) {
+        if ($data->isNotEmpty()) {
+            // Set Header
+            $headers = array_keys((array) $data[0]);
             $columnIndex = 'A';
-            foreach ((array) $row as $value) {
-                $sheet->setCellValue($columnIndex . $rowNumber, $value);
+
+            foreach ($headers as $header) {
+                $sheet->setCellValue($columnIndex . '1', strtoupper($header));
                 $columnIndex++;
             }
-            $rowNumber++;
+
+            // Isi Data
+            $rowNumber = 2;
+            foreach ($data as $row) {
+                $columnIndex = 'A';
+                foreach ((array) $row as $value) {
+                    $sheet->setCellValue($columnIndex . $rowNumber, $value);
+                    $columnIndex++;
+                }
+                $rowNumber++;
+            }
         }
 
-        // Buat stream response
+        // Tambahkan Sheet Log Jika Super Admin
+        if (Auth::user()->hasRole('super_admin') || Auth::user()->employee->departement_id === 13) {
+            $superAdmins = LogUserAttendance::with('user')->get();
+            $superAdminSheet = $spreadsheet->createSheet();
+            $superAdminSheet->setTitle('Log Attendance');
+
+            if ($superAdmins->isNotEmpty()) {
+                $headers = ['ID', 'NIP', 'Name', 'Type', 'Time', 'Date'];
+                $columnIndex = 'A';
+
+                foreach ($headers as $header) {
+                    $superAdminSheet->setCellValue($columnIndex . '1', strtoupper($header));
+                    $columnIndex++;
+                }
+
+                $rowNumber = 2;
+                foreach ($superAdmins as $admin) {
+                    $superAdminSheet->setCellValue('A' . $rowNumber, $admin->id);
+                    $superAdminSheet->setCellValue('B' . $rowNumber, $admin->user->nip ?? '-');
+                    $superAdminSheet->setCellValue('C' . $rowNumber, $admin->user->name ?? '-');
+                    $superAdminSheet->setCellValue('D' . $rowNumber, $admin->type);
+                    $superAdminSheet->setCellValue('E' . $rowNumber, Carbon::parse($admin->created_at)->format('H:i:s'));
+                    $superAdminSheet->setCellValue('F' . $rowNumber, Carbon::parse($admin->created_at)->format('Y-m-d'));
+                    $rowNumber++;
+                }
+            }
+        }
+
+        // Generate File
         $fileName = 'data_export_attendance_' . now()->format('Ymd_His') . '.xlsx';
 
         $response = new StreamedResponse(function () use ($spreadsheet) {
@@ -479,7 +511,9 @@ class AbsensiController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
+
         Logger::log('xlsx download', new UserAttendance(), $data->toArray());
+
         return $response;
     }
 }
