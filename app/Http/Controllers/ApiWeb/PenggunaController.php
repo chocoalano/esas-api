@@ -94,7 +94,7 @@ class PenggunaController extends Controller
 
         // Paginate
         $result = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', Auth::user(), $result->toArray());
+        Logger::log('list paginate', new User(), $result->toArray());
         return $this->sendResponse($result, 'Data User berhasil diambil');
     }
 
@@ -145,7 +145,7 @@ class PenggunaController extends Controller
             if (isset($validated['employee'])) {
                 $user->employee()->updateOrCreate([], $validated['employee']);
             }
-            Logger::log('create', Auth::user(), $user->toArray());
+            Logger::log('create', new User(), $user->toArray());
             return $this->sendResponse($user, 'Data User berhasil dibuat.');
 
         } catch (\Exception $e) {
@@ -180,7 +180,7 @@ class PenggunaController extends Controller
             ])->find($id);
             $cp = Company::all();
             $dp = Departement::all();
-            Logger::log('show', Auth::user(), $dt->toArray());
+            Logger::log('show', new User(), $dt->toArray());
             return $this->sendResponse([
                 'user' => $dt,
                 'company_select' => $cp,
@@ -201,7 +201,7 @@ class PenggunaController extends Controller
             $dt = User::find($id);
             $dt->device_id = null;
             $dt->save();
-            Logger::log('reset device', Auth::user(), $dt->toArray());
+            Logger::log('reset device', new User(), $dt->toArray());
             return $this->sendResponse($dt, 'Data User berhasil direset');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -222,7 +222,7 @@ class PenggunaController extends Controller
             // Reset password ke NIP (dihash)
             $user->password = Hash::make($user->nip);
             $user->save();
-            Logger::log('reset password', Auth::user(), $user->toArray());
+            Logger::log('reset password', new User(), $user->toArray());
             return $this->sendResponse($user, 'Password user berhasil direset ke NIP.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat mereset password.', ['error' => $e->getMessage()], 500);
@@ -242,6 +242,7 @@ class PenggunaController extends Controller
                 'before'=>$user->toArray(),
                 'after'=>$validated,
             ];
+            Logger::log('update', new User(), $payload);
             // Update basic fields
             $user->update([
                 'company_id' => $validated['company_id'],
@@ -265,7 +266,6 @@ class PenggunaController extends Controller
                     $user->update(['avatar' => $upload['path']]);
                 }
             }
-            Logger::log('update', Auth::user(), $payload);
             return $this->sendResponse($user->fresh(), 'Data User berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat memperbaharui data.', ['error' => $e->getMessage()], 500);
@@ -280,7 +280,7 @@ class PenggunaController extends Controller
     {
         try {
             $dt = User::find($id);
-            Logger::log('delete', Auth::user(), $dt->toArray());
+            Logger::log('delete', new User(), $dt->toArray());
             $dt->delete();
             return $this->sendResponse($dt, 'Data User berhasil dihapus');
         } catch (\Exception $e) {
@@ -356,7 +356,7 @@ class PenggunaController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.user', ['user' => $data]);
         $filename = 'user-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', Auth::user(), $data->toArray());
+        Logger::log('pdf download', new User(), $data->toArray());
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -462,7 +462,7 @@ class PenggunaController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', Auth::user(), $users->toArray());
+        Logger::log('xlsx download', new User(), $users->toArray());
         return $response;
     }
 

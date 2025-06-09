@@ -93,39 +93,57 @@ class AuthController extends Controller
     {
         try {
             $validated = $this->validateUser($request);
-            $user = User::findOrFail(Auth::user()->id);
-            $payload=[
-                'before'=>$user->toArray(),
-                'after'=>$validated
+            $user = User::findOrFail(Auth::id());
+
+            // Simpan salinan data sebelum update untuk keperluan logging
+            $payload = [
+                'before' => $user->toArray(),
+                'after' => $validated
             ];
-            Logger::log('update', Auth::user(), $payload);
-            // Update basic fields
-            $user->update([
+            Logger::log('update', $user, $payload);
+
+            // Data yang akan di-update
+            $updateData = [
                 'company_id' => $validated['company_id'],
                 'name' => $validated['name'],
                 'nip' => $validated['nip'],
                 'email' => $validated['email'],
                 'status' => $validated['status'],
-            ]);
+            ];
 
-            // Update details (pastikan relasinya ada, misal hasOne)
-            $user->details()->updateOrCreate([], $validated['details']);
-            $user->address()->updateOrCreate([], $validated['address']);
-            $user->salaries()->updateOrCreate([], $validated['salaries']);
-            $user->employee()->updateOrCreate([], $validated['employee']);
+            // Update password jika ada
+            if (!empty($validated['password'])) {
+                $updateData['password'] = bcrypt($validated['password']);
+            }
 
-            // Update avatar jika ada
-            if ($request->hasFile('avatar')) {
+            $user->update($updateData);
+
+            // Update relasi hasOne
+            $user->details()->updateOrCreate([], $validated['details'] ?? []);
+            $user->address()->updateOrCreate([], $validated['address'] ?? []);
+            $user->salaries()->updateOrCreate([], $validated['salaries'] ?? []);
+            $user->employee()->updateOrCreate([], $validated['employee'] ?? []);
+
+            // Update avatar jika file dikirim
+            if ($request->hasFile('avatar_file')) {
                 UploadFile::removeFromSpaces($user->avatar);
-                $upload = UploadFile::uploadToSpaces($request->file('avatar_file'), 'avatars', Carbon::now()->format('YmdHis'));
-                if (is_array($upload) && isset($upload['url']) && isset($upload['path'])) {
+                $upload = UploadFile::uploadToSpaces(
+                    $request->file('avatar_file'),
+                    'avatars',
+                    Carbon::now()->format('YmdHis')
+                );
+
+                if (is_array($upload) && isset($upload['url'], $upload['path'])) {
                     $user->update(['avatar' => $upload['path']]);
                 }
             }
 
             return $this->sendResponse($user->fresh(), 'Data User berhasil diperbaharui');
+
         } catch (\Exception $e) {
-            return $this->sendError('Process errors.', ['error' => $e->getMessage()]);
+            return $this->sendError('Terjadi kesalahan saat memperbarui data.', [
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
@@ -168,7 +186,8 @@ class AuthController extends Controller
         return $this->sendResponse($data, 'Data pemberitahuan berhasil diambil');
     }
 
-    public function pemberitahuan_read($id){
+    public function pemberitahuan_read($id)
+    {
         $query = Notification::find($id);
         if ($query) {
             $query->read_at = Carbon::now();
@@ -215,7 +234,8 @@ class AuthController extends Controller
         ]);
     }
 
-    public function unauthorized(){
-        return response()->json(['message'=>'unauthorized'], 401);
+    public function unauthorized()
+    {
+        return response()->json(['message' => 'unauthorized'], 401);
     }
 }
