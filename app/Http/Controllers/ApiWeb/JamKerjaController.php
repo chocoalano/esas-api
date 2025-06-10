@@ -91,8 +91,8 @@ class JamKerjaController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
             'departemen_id' => ['required', 'exists:departements,id'],
             'name' => ['required', 'string', 'min:3', 'max:100'],
-            'in' => ['required', 'date_format:H:i:s'],
-            'out' => ['required', 'date_format:H:i:s', 'after:in'],
+            'in' => ['required', 'date_format:H:i'],
+            'out' => ['required', 'date_format:H:i', 'after:in'],
         ]);
 
         try {
@@ -134,15 +134,15 @@ class JamKerjaController extends Controller
             'company_id' => ['required', 'exists:companies,id'],
             'departemen_id' => ['required', 'exists:departements,id'],
             'name' => ['required', 'string', 'min:3', 'max:100'],
-            'in' => ['required', 'date_format:H:i:s'],
-            'out' => ['required', 'date_format:H:i:s', 'after:in'],
+            'in' => ['required', 'date_format:H:i'],
+            'out' => ['required', 'date_format:H:i', 'after:in'],
         ]);
         try {
             // Menyimpan data TimeWork ke database
             $dt = TimeWork::find($id);
             $payload = [
-                'before'=>$dt->toArray(),
-                'after'=>$validated
+                'before' => $dt->toArray(),
+                'after' => $validated
             ];
             $dt->update($validated);
             Logger::log('update', $dt ?? new TimeWork(), $payload);
@@ -161,7 +161,7 @@ class JamKerjaController extends Controller
         $idData = explode(',', $id);
         try {
             $dt = TimeWork::whereIn('id', $idData);
-            $delete=$dt->get();
+            $delete = $dt->get();
             Logger::log('delete', $dt ?? new TimeWork(), $delete->toArray);
             $dt->delete();
             return $this->sendResponse($dt, 'Data TimeWork berhasil dihapus');
