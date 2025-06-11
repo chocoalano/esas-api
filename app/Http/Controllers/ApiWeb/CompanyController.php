@@ -67,7 +67,9 @@ class CompanyController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', $data->first() ?? new Company(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', $data->first() ?? new Company(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data perusahaan berhasil diambil');
     }
 
@@ -92,7 +94,9 @@ class CompanyController extends Controller
                 'radius' => $validated['radius'],
                 'full_address' => $validated['full_address'],
             ]);
-            Logger::log('create', $data ?? new Company(), $data->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $data ?? new Company(), $data->toArray());
+            }
             return $this->sendResponse($data, 'Data perusahaan berhasil dibuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -107,7 +111,9 @@ class CompanyController extends Controller
         try {
             // Menyimpan data perusahaan ke database
             $data = Company::find($id);
-            Logger::log('show', $data ?? new Company(), $data->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $data ?? new Company(), $data->toArray());
+            }
             return $this->sendResponse($data, 'Data perusahaan berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -129,9 +135,9 @@ class CompanyController extends Controller
         try {
             // Menyimpan data perusahaan ke database
             $data = Company::find($id);
-            $payload=[
-                'before'=>$data->toArray(),
-                'after'=>$validated,
+            $payload = [
+                'before' => $data->toArray(),
+                'after' => $validated,
             ];
             $data->update([
                 'name' => $validated['name'],
@@ -140,7 +146,9 @@ class CompanyController extends Controller
                 'radius' => $validated['radius'],
                 'full_address' => $validated['full_address'],
             ]);
-            Logger::log('update', $data ?? new Company(), $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $data ?? new Company(), $payload);
+            }
             return $this->sendResponse($data, 'Data perusahaan berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -156,7 +164,9 @@ class CompanyController extends Controller
         try {
             $data = Company::whereIn('id', $idData);
             $delete = $data->get();
-            Logger::log('delete', $data ?? new Company(), $delete->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $data ?? new Company(), $delete->toArray());
+            }
             $data->delete();
             return $this->sendResponse($data, 'Data perusahaan berhasil dihapus');
         } catch (\Exception $e) {
@@ -207,7 +217,9 @@ class CompanyController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.company', ['company' => $data]);
         $filename = 'company-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new Company(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new Company(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -286,7 +298,9 @@ class CompanyController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', new Company(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new Company(), $data->toArray());
+        }
         return $response;
     }
 }

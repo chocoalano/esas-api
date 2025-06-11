@@ -49,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::get('kelengkapan-form/all-schedule', 'all_schedule');
                 Route::get('kelengkapan-form/all-user', 'all_user');
                 Route::get('kelengkapan-form/all-permit', 'all_permit');
+                Route::get('kelengkapan-form/all-roles', 'all_roles');
                 Route::get('kelengkapan-form/filter-company', 'filter_company');
                 Route::get('kelengkapan-form/filter-departement', 'filter_departement');
                 Route::get('kelengkapan-form/filter-position', 'filter_position');

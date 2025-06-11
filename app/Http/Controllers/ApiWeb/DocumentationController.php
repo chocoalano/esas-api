@@ -62,7 +62,9 @@ class DocumentationController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new Documentation(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new Documentation(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data documentation berhasil diambil');
     }
 
@@ -80,7 +82,9 @@ class DocumentationController extends Controller
 
         try {
             $data = Documentation::create($validated);
-            Logger::log('create', $data ?? new Documentation(), $data->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $data ?? new Documentation(), $data->toArray());
+            }
             return $this->sendResponse($data, 'Data documentation berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -95,7 +99,9 @@ class DocumentationController extends Controller
         try {
             // Menyimpan data documentation ke database
             $dt = Documentation::find($id);
-            Logger::log('show', $dt ?? new Documentation(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new Documentation(), $dt->toArray());
+            }
             return $this->sendResponse($dt, 'Data documentation berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -117,10 +123,12 @@ class DocumentationController extends Controller
             // Menyimpan data documentation ke database
             $dt = Documentation::find($id);
             $payload = [
-                'before'=>$dt->toArray(),
-                'after'=>$validated,
+                'before' => $dt->toArray(),
+                'after' => $validated,
             ];
-            Logger::log('create', $dt ?? New Documentation(), $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $dt ?? new Documentation(), $payload);
+            }
             $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data documentation berhasil diperbaharui');
@@ -138,7 +146,9 @@ class DocumentationController extends Controller
         try {
             $dt = Documentation::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', $dt ?? New Documentation(), $delete->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new Documentation(), $delete->toArray());
+            }
             $delete->delete();
             return $this->sendResponse($dt, 'Data documentation berhasil dihapus');
         } catch (\Exception $e) {
@@ -160,7 +170,9 @@ class DocumentationController extends Controller
         // Generate PDF
         $pdf = Pdf::loadView('pdf.position', ['position' => $data]);
         $filename = 'position-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new Documentation(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new Documentation(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');

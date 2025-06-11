@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\ApiWeb;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -102,6 +104,11 @@ class PeranController extends Controller
             // Menyimpan data role ke database
             $dt = Role::find($id);
             $pr = $dt->permissions()->pluck('id')->toArray();
+            $userIds = DB::table('model_has_roles')
+                ->where('role_id', $dt->id)
+                ->where('model_type', \App\Models\User::class) // sesuaikan jika kamu pakai model user custom
+                ->pluck('model_id')
+                ->toArray();
             $cy = Permission::select('id', 'name')
                 ->get()
                 ->groupBy(function ($item) {
@@ -129,6 +136,7 @@ class PeranController extends Controller
 
             return $this->sendResponse([
                 'role' => $dt,
+                'user_ids' => $userIds,
                 'permission' => $pr,
                 'select_permission' => $cy,
             ], 'Data role berhasil dimuat');
@@ -144,6 +152,8 @@ class PeranController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'user_ids' => ['required', 'array'],
+            'user_ids.*' => ['integer', 'exists:users,id'],
             'permission' => ['required', 'array'],
             'permission.*' => ['integer', 'exists:permissions,id'],
         ]);
@@ -156,6 +166,7 @@ class PeranController extends Controller
 
             // Sinkronisasi permission
             $role->permissions()->sync($validated['permission']);
+            $role->users()->sync($validated['user_ids']);
 
             return $this->sendResponse($role, 'Data role berhasil diperbaharui');
         } catch (\Exception $e) {

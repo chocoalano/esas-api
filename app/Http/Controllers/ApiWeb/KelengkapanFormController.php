@@ -12,12 +12,18 @@ use App\Models\CoreApp\TimeWork;
 use App\Models\User;
 use App\Models\views\UserTimeworkSchedule;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
 
 class KelengkapanFormController extends Controller
 {
     public function all_company()
     {
         $data = Company::all();
+        return $this->sendResponse($data, 'Data berhasil diambil');
+    }
+    public function all_roles()
+    {
+        $data = Role::all();
         return $this->sendResponse($data, 'Data berhasil diambil');
     }
     public function all_departement()

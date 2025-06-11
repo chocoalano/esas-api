@@ -97,7 +97,9 @@ class IzinController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new Permit(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new Permit(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data izin berhasil diambil');
     }
 
@@ -204,7 +206,9 @@ class IzinController extends Controller
             $userIds = array_column($approval, 'user_id');
             $this->notif->broadcast_approvals($userIds, "{$user->name}-{$user->nip}", $permitType->type);
             DB::commit();
-            Logger::log('create', $permit ?? new Permit(), $permit->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $permit ?? new Permit(), $permit->toArray());
+            }
             return $this->sendResponse($permit, 'Data izin berhasil dibuat.');
         } catch (\Exception $e) {
             DB::rollBack();
@@ -226,7 +230,9 @@ class IzinController extends Controller
                 'approvals',
                 'userTimeworkSchedule',
             ])->find($id);
-            Logger::log('show', $dt ?? new Permit(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new Permit(), $dt->toArray());
+            }
             return $this->sendResponse($dt, 'Data izin berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -265,9 +271,9 @@ class IzinController extends Controller
         try {
             // Menyimpan data izin ke database
             $dt = Permit::find($id);
-            $payload=[
-                'before'=>$dt->toArray(),
-                'after'=>$validated,
+            $payload = [
+                'before' => $dt->toArray(),
+                'after' => $validated,
             ];
             $dt->user_id = $validated['user_id'];
             $dt->permit_numbers = $validated['permit_numbers'];
@@ -291,7 +297,9 @@ class IzinController extends Controller
             }
 
             $dt->save();
-            Logger::log('update', $dt ?? new Permit(), $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $dt ?? new Permit(), $payload);
+            }
             return $this->sendResponse($dt, 'Data izin berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -326,7 +334,9 @@ class IzinController extends Controller
                 'user_approve' => $validated['approval'],
                 'notes' => $validated['notes'],
             ]);
-            Logger::log('approved', $permit ?? new Permit(), $approval->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('approved', $permit ?? new Permit(), $approval->toArray());
+            }
             return $this->sendResponse($validated, 'Data approval izin berhasil diperbaharui.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan pada proses.', ['error' => $e->getMessage()], 500);
@@ -342,7 +352,9 @@ class IzinController extends Controller
         try {
             $dt = Permit::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', $dt ?? new Permit(), $delete->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new Permit(), $delete->toArray());
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data izin berhasil dihapus');
         } catch (\Exception $e) {
@@ -393,7 +405,9 @@ class IzinController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.izin', ['izin' => $data]);
         $filename = 'izin-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new Permit(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new Permit(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -472,7 +486,9 @@ class IzinController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', new Permit(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new Permit(), $data->toArray());
+        }
         return $response;
     }
 }

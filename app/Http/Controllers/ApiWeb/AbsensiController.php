@@ -93,7 +93,9 @@ class AbsensiController extends Controller
             $query->orderBy('created_at', 'desc');
         }
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', $data->first() ?? new UserAttendance(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', $data->first() ?? new UserAttendance(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data kehadiran berhasil diambil');
     }
 
@@ -154,7 +156,9 @@ class AbsensiController extends Controller
             }
 
             $absen->save();
-            Logger::log('create', $absen, $absen->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $absen, $absen->toArray());
+            }
             return $this->sendResponse($absen, 'Data absensi berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', [
@@ -178,7 +182,9 @@ class AbsensiController extends Controller
                 'schedule.timework',
                 'qrPresenceTransactions'
             ])->find($id);
-            Logger::log('show', $dt ?? new UserAttendance(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new UserAttendance(), $dt->toArray());
+            }
             return $this->sendResponse($dt, 'Data absensi berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -247,7 +253,9 @@ class AbsensiController extends Controller
                 }
             }
             $absen->save();
-            Logger::log('update', $absen ?? new UserAttendance(), $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $absen ?? new UserAttendance(), $payload);
+            }
             return $this->sendResponse($absen, 'Data absensi berhasil diperbaharui.');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -263,7 +271,9 @@ class AbsensiController extends Controller
         try {
             $dt = UserAttendance::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', $dt ?? new UserAttendance(), $delete->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new UserAttendance(), $delete->toArray());
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data absensi berhasil dihapus');
         } catch (\Exception $e) {
@@ -331,7 +341,9 @@ class AbsensiController extends Controller
             ]);
 
             $filename = 'absensi-' . now()->format('Ymd_His') . '.pdf';
-            Logger::log('pdf download', new UserAttendance(), $data->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('pdf download', new UserAttendance(), $data->toArray());
+            }
             return response($pdf->output(), 200)
                 ->header('Content-Type', 'application/pdf')
                 ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -511,9 +523,9 @@ class AbsensiController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-
-        Logger::log('xlsx download', new UserAttendance(), $data->toArray());
-
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new UserAttendance(), $data->toArray());
+        }
         return $response;
     }
 }

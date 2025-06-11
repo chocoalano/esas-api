@@ -41,7 +41,9 @@ class AuthController extends Controller
             $success['token_type'] = 'Bearer';
             $success['name'] = $user->name;
             $success['userId'] = $user->id;
-            Logger::log('login', Auth::user(), $user->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('login', Auth::user(), $user->toArray());
+            }
             return $this->sendResponse($success, 'User login successfully.');
         }
         return $this->sendError('Unauthorised.', ['error' => $proses['message']]);
@@ -71,7 +73,9 @@ class AuthController extends Controller
         if (!$user) {
             return $this->sendError('Unauthorized', ['error' => 'User not authenticated'], 401);
         }
-        Logger::log('logout', Auth::user(), $user->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('logout', Auth::user(), $user->toArray());
+        }
         // Hapus semua token pengguna (berlaku untuk Sanctum)
         $user->tokens()->delete();
 
@@ -136,8 +140,9 @@ class AuthController extends Controller
                     $user->update(['avatar' => $upload['path']]);
                 }
             }
-
-            Logger::log('update', $user, $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $user, $payload);
+            }
             return $this->sendResponse($user->fresh(), 'Data User berhasil diperbaharui');
 
         } catch (\Exception $e) {
@@ -182,7 +187,9 @@ class AuthController extends Controller
         $query->where('notifiable_id', $id);
         // Pagination
         $data = $query->paginate(20, ['*'], 'page', $page);
-        Logger::log('list paginate', new Notification(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new Notification(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data pemberitahuan berhasil diambil');
     }
 
@@ -193,7 +200,9 @@ class AuthController extends Controller
             $query->read_at = Carbon::now();
             $query->save();
         }
-        Logger::log('show', $query ?? new Notification(), $query->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('show', $query ?? new Notification(), $query->toArray());
+        }
         return $this->sendResponse($query, 'Data pemberitahuan telah dibaca');
     }
 
