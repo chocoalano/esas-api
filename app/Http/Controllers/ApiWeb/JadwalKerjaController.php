@@ -87,7 +87,9 @@ class JadwalKerjaController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new UserTimeworkSchedule(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new UserTimeworkSchedule(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data laporan bug berhasil diambil');
     }
 
@@ -135,7 +137,9 @@ class JadwalKerjaController extends Controller
                 InsertUpdateScheduleJob::dispatch($jadwal);
                 return $this->sendResponse($validated, 'Data jadwal kerja berhasil dibuat.');
             }
-            Logger::log('create', new UserTimeworkSchedule(), $jadwal);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', new UserTimeworkSchedule(), $jadwal);
+            }
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', [
                 'error' => "Jumlah data yang valid: " . count($jadwal)
             ], 500);
@@ -157,7 +161,9 @@ class JadwalKerjaController extends Controller
                 'company',
                 'user'
             ])->find($id);
-            Logger::log('show', $dt ?? new UserTimeworkSchedule(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new UserTimeworkSchedule(), $dt->toArray());
+            }
             return $this->sendResponse($dt, 'Data laporan bug berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -195,8 +201,10 @@ class JadwalKerjaController extends Controller
         $idData = explode(',', $id);
         try {
             $dt = UserTimeworkSchedule::whereIn('id', $idData);
-            $delete=$dt->get();
-            Logger::log('delete', $dt ?? new UserTimeworkSchedule(), $delete->toArray());
+            $delete = $dt->get();
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new UserTimeworkSchedule(), $delete->toArray());
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data laporan bug berhasil dihapus');
         } catch (\Exception $e) {
@@ -227,19 +235,19 @@ class JadwalKerjaController extends Controller
             'timeWork',
         ]);
         if (!empty($validated['company_id'])) {
-            $query->whereHas('user', function($u)use($validated){
+            $query->whereHas('user', function ($u) use ($validated) {
                 $u->where('company_id', $validated['company_id']);
             });
         }
         if (!empty($validated['departement_id'])) {
-            $query->whereHas('user', function($d)use($validated){
-                $d->whereHas('employee', function($dept)use($validated){
+            $query->whereHas('user', function ($d) use ($validated) {
+                $d->whereHas('employee', function ($dept) use ($validated) {
                     $dept->where('departement_id', $validated['departement_id']);
                 });
             });
         }
         if (!empty($validated['timework_id'])) {
-            $query->whereHas('timework', function($t)use($validated){
+            $query->whereHas('timework', function ($t) use ($validated) {
                 $t->where('id', $validated['timework_id']);
             });
         }

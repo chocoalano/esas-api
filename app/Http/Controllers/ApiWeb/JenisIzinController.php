@@ -64,7 +64,9 @@ class JenisIzinController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new PermitType(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new PermitType(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data permittype berhasil diambil');
     }
 
@@ -85,7 +87,9 @@ class JenisIzinController extends Controller
 
         try {
             $data = PermitType::create($validated);
-            Logger::log('create', $data ?? new PermitType(), $data->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $data ?? new PermitType(), $data->toArray());
+            }
             return $this->sendResponse($data, 'Data permittype berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -100,7 +104,9 @@ class JenisIzinController extends Controller
         try {
             // Menyimpan data permittype ke database
             $dt = PermitType::find($id);
-            Logger::log('show', $dt ?? new PermitType(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new PermitType(), $dt->toArray());
+            }
             return $this->sendResponse($dt, 'Data permittype berhasil dimuat');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -124,11 +130,13 @@ class JenisIzinController extends Controller
         try {
             // Menyimpan data permittype ke database
             $dt = PermitType::find($id);
-            $payload=[
-                'before'=>$dt->toArray(),
-                'after'=>$validated
+            $payload = [
+                'before' => $dt->toArray(),
+                'after' => $validated
             ];
-            Logger::log('update', $dt ?? new PermitType(), $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $dt ?? new PermitType(), $payload);
+            }
             $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data permittype berhasil diperbaharui');
@@ -146,7 +154,9 @@ class JenisIzinController extends Controller
         try {
             $dt = PermitType::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', $dt ?? new PermitType(), $delete->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new PermitType(), $delete->toArray());
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data permittype berhasil dihapus');
         } catch (\Exception $e) {
@@ -193,7 +203,9 @@ class JenisIzinController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.jenis_izin', ['jenis_izin' => $data]);
         $filename = 'jenis_izin-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new PermitType(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new PermitType(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -272,7 +284,9 @@ class JenisIzinController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', new PermitType(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new PermitType(), $data->toArray());
+        }
         return $response;
     }
 }

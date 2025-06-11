@@ -93,7 +93,9 @@ class PenggunaController extends Controller
 
         // Paginate
         $result = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new User(), $result->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new User(), $result->toArray());
+        }
         return $this->sendResponse($result, 'Data User berhasil diambil');
     }
 
@@ -144,7 +146,9 @@ class PenggunaController extends Controller
             if (isset($validated['employee'])) {
                 $user->employee()->updateOrCreate([], $validated['employee']);
             }
-            Logger::log('create', $user, $user->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $user, $user->toArray());
+            }
             return $this->sendResponse($user, 'Data User berhasil dibuat.');
 
         } catch (\Exception $e) {
@@ -179,7 +183,9 @@ class PenggunaController extends Controller
             ])->find($id);
             $cp = Company::all();
             $dp = Departement::all();
-            Logger::log('show', $dt ?? new User(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new User(), $dt->toArray());
+            }
             return $this->sendResponse([
                 'user' => $dt,
                 'company_select' => $cp,
@@ -200,7 +206,9 @@ class PenggunaController extends Controller
             $dt = User::find($id);
             $dt->device_id = null;
             $dt->save();
-            Logger::log('reset device', $dt ?? new User(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('reset device', $dt ?? new User(), $dt->toArray());
+            }
             return $this->sendResponse($dt, 'Data User berhasil direset');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -236,8 +244,9 @@ class PenggunaController extends Controller
                 'before' => $beforeReset,
                 'after' => $user->toArray(),
             ];
-            Logger::log('reset password', $user ?? new User(), $payload);
-
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('reset password', $user ?? new User(), $payload);
+            }
             return $this->sendResponse($user->fresh(), 'Password user berhasil direset ke NIP.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat mereset password.', [
@@ -285,7 +294,9 @@ class PenggunaController extends Controller
             }
 
             // 🔥 Fix di sini
-            Logger::log('update', $user, $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $user, $payload);
+            }
 
             return $this->sendResponse($user->fresh(), 'Data User berhasil diperbaharui');
         } catch (\Exception $e) {
@@ -300,7 +311,9 @@ class PenggunaController extends Controller
     {
         try {
             $dt = User::find($id);
-            Logger::log('delete', $dt, $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt, $dt->toArray());
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data User berhasil dihapus');
         } catch (\Exception $e) {
@@ -376,7 +389,9 @@ class PenggunaController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.user', ['user' => $data]);
         $filename = 'user-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new User(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new User(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -482,7 +497,9 @@ class PenggunaController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', new User(), $users->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new User(), $users->toArray());
+        }
         return $response;
     }
 

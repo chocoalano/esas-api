@@ -74,7 +74,9 @@ class PengumumanController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new Announcement(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new Announcement(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data pengumuman berhasil diambil');
     }
 
@@ -92,7 +94,9 @@ class PengumumanController extends Controller
         $validated['user_id'] = Auth::user()->id;
         try {
             $dt = Announcement::create($validated);
-            Logger::log('create', $dt ?? new Announcement(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $dt ?? new Announcement(), $dt->toArray());
+            }
             return $this->sendResponse($dt, 'Data pengumuman berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -111,7 +115,9 @@ class PengumumanController extends Controller
                 'user'
             ])->find($id);
             $cy = Company::all();
-            Logger::log('show', $dt ?? new Announcement(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new Announcement(), $dt->toArray());
+            }
             return $this->sendResponse([
                 'pengumuman' => $dt,
                 'select_company' => $cy
@@ -140,7 +146,9 @@ class PengumumanController extends Controller
                 'before' => $dt->toArray(),
                 'after' => $validated,
             ];
-            Logger::log('update', $dt ?? new Announcement(), $payload);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $dt ?? new Announcement(), $payload);
+            }
             $dt->update($validated);
 
             return $this->sendResponse($dt, 'Data pengumuman berhasil diperbaharui');
@@ -158,7 +166,9 @@ class PengumumanController extends Controller
         try {
             $dt = Announcement::whereIn('id', $idData);
             $delete = $dt->get;
-            Logger::log('delete', $dt ?? new Announcement(), $delete->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new Announcement(), $delete->toArray());
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data pengumuman berhasil dihapus');
         } catch (\Exception $e) {
@@ -209,7 +219,9 @@ class PengumumanController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.company', ['company' => $data]);
         $filename = 'company-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new Announcement(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new Announcement(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -288,7 +300,9 @@ class PengumumanController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', new Announcement(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new Announcement(), $data->toArray());
+        }
         return $response;
     }
 }

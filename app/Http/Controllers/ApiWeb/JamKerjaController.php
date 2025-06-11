@@ -78,7 +78,9 @@ class JamKerjaController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new TimeWork(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new TimeWork(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data TimeWork berhasil diambil');
     }
 
@@ -97,7 +99,9 @@ class JamKerjaController extends Controller
 
         try {
             $TimeWork = TimeWork::create($validated);
-            Logger::log('create', $TimeWork ?? new TimeWork(), $TimeWork->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $TimeWork ?? new TimeWork(), $TimeWork->toArray());
+            }
             return $this->sendResponse($TimeWork, 'Data TimeWork berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -114,7 +118,9 @@ class JamKerjaController extends Controller
             $dt = TimeWork::find($id);
             $cp = Company::all();
             $dp = Departement::all();
-            Logger::log('show', $dt ?? new TimeWork(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new TimeWork(), $dt->toArray());
+            }
             return $this->sendResponse([
                 'timework' => $dt,
                 'company_select' => $cp,
@@ -145,8 +151,9 @@ class JamKerjaController extends Controller
                 'after' => $validated
             ];
             $dt->update($validated);
-            Logger::log('update', $dt ?? new TimeWork(), $payload);
-
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $dt ?? new TimeWork(), $payload);
+            }
             return $this->sendResponse($dt, 'Data TimeWork berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -162,7 +169,9 @@ class JamKerjaController extends Controller
         try {
             $dt = TimeWork::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', $dt ?? new TimeWork(), $delete->toArray);
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new TimeWork(), $delete->toArray);
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data TimeWork berhasil dihapus');
         } catch (\Exception $e) {
@@ -212,7 +221,9 @@ class JamKerjaController extends Controller
         // // Generate PDF
         $pdf = Pdf::loadView('pdf.jam', ['jam' => $data]);
         $filename = 'jam-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new TimeWork(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new TimeWork(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -291,7 +302,9 @@ class JamKerjaController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', new TimeWork(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new TimeWork(), $data->toArray());
+        }
         return $response;
     }
 }

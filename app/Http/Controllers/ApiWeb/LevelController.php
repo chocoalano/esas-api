@@ -78,7 +78,9 @@ class LevelController extends Controller
         }
         // Pagination
         $data = $query->paginate($limit, ['*'], 'page', $page);
-        Logger::log('list paginate', new JobLevel(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('list paginate', new JobLevel(), $data->toArray());
+        }
         return $this->sendResponse($data, 'Data departemen berhasil diambil');
     }
 
@@ -99,7 +101,9 @@ class LevelController extends Controller
                 'departement_id' => $validated['departement_id'],
                 'name' => $validated['name'],
             ]);
-            Logger::log('create', $data ?? new JobLevel(), $data->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('create', $data ?? new JobLevel(), $data->toArray());
+            }
             return $this->sendResponse($data, 'Data departemen berhasil dibuat.');
         } catch (\Exception $e) {
             return $this->sendError('Terjadi kesalahan saat menyimpan data.', ['error' => $e->getMessage()], 500);
@@ -119,7 +123,9 @@ class LevelController extends Controller
             ])->find($id);
             $cy = Company::all();
             $dp = Departement::all();
-            Logger::log('show', $dt ?? new JobLevel(), $dt->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('show', $dt ?? new JobLevel(), $dt->toArray());
+            }
             return $this->sendResponse([
                 'level' => $dt,
                 'select_company' => $cy,
@@ -147,13 +153,14 @@ class LevelController extends Controller
                 'before' => $dt->toArray(),
                 'after' => $validated
             ];
-            Logger::log('update', $dt ?? new JobLevel(), $payload);
             $dt->update([
                 'company_id' => $validated['company_id'],
                 'departement_id' => $validated['departement_id'],
                 'name' => $validated['name'],
             ]);
-
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('update', $dt ?? new JobLevel(), $payload);
+            }
             return $this->sendResponse($dt, 'Data departemen berhasil diperbaharui');
         } catch (\Exception $e) {
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);
@@ -169,7 +176,9 @@ class LevelController extends Controller
         try {
             $dt = JobLevel::whereIn('id', $idData);
             $delete = $dt->get();
-            Logger::log('delete', $dt ?? new JobLevel(), $delete->toArray());
+            if (!auth()->user()->hasRole('super_admin')) {
+                Logger::log('delete', $dt ?? new JobLevel(), $delete->toArray());
+            }
             $dt->delete();
             return $this->sendResponse($dt, 'Data departemen berhasil dihapus');
         } catch (\Exception $e) {
@@ -202,7 +211,9 @@ class LevelController extends Controller
         // Generate PDF
         $pdf = Pdf::loadView('pdf.level', ['level' => $data]);
         $filename = 'level-' . now()->format('YmdHis') . '.pdf';
-        Logger::log('pdf download', new JobLevel(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('pdf download', new JobLevel(), $data->toArray());
+        }
         return response($pdf->output(), 200)
             ->header('Content-Type', 'application/pdf')
             ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
@@ -281,7 +292,9 @@ class LevelController extends Controller
         $response->headers->set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         $response->headers->set('Cache-Control', 'max-age=0');
-        Logger::log('xlsx download', new JobLevel(), $data->toArray());
+        if (!auth()->user()->hasRole('super_admin')) {
+            Logger::log('xlsx download', new JobLevel(), $data->toArray());
+        }
         return $response;
     }
 }
