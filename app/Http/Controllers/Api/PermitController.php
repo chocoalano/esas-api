@@ -20,8 +20,8 @@ class PermitController extends Controller
         $this->middleware('auth');
         $this->middleware('permission:view_permit|view_any_permit', ['only' => ['index', 'show']]);
         $this->middleware('permission:create_permit', ['only' => ['store']]);
-        $this->middleware('permission:update_permit', ['only' => ['update']]);
-        $this->middleware('permission:delete_permit|delete_any_permit', ['only' => ['destroy']]);
+        // $this->middleware('permission:update_permit', ['only' => ['update']]);
+        // $this->middleware('permission:delete_permit|delete_any_permit', ['only' => ['destroy']]);
     }
     /**
      * Display a listing of the resource.
@@ -46,8 +46,8 @@ class PermitController extends Controller
         try {
             $input = $request->all();
             if (isset($input['type']) && $input['type'] === 'mobile') {
-                $input['user_id']=Auth::user()->id;
-                $input['permit_numbers']=$this->proses->generate_unique_numbers($input['permit_type_id']);
+                $input['user_id'] = Auth::user()->id;
+                $input['permit_numbers'] = $this->proses->generate_unique_numbers($input['permit_type_id']);
             }
             $permitTypeId = $input['permit_type_id'];
             $validationRules = match ($permitTypeId) {
@@ -95,7 +95,7 @@ class PermitController extends Controller
             $approve = $request->input('approve');
             $notes = $request->input('notes');
             $approve = $this->proses->approved($id, $authId, $approve, $notes);
-            return $this->sendResponse($approve, 'Permit update successfully.');
+            return $this->sendResponse($approve, $approve ? 'Approval successfully.' : 'Approval tidak berhasil, fungsi approval harus berurutan dimulai dari atasan > manager > HRGA. Masing-masing tidak bisa saling mendahului!');
         } catch (\Throwable $e) {
             // Tangkap semua jenis error
             return $this->sendError('Process error.', ['error' => $e->getMessage()], 500);

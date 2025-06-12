@@ -127,7 +127,6 @@ class PermitNotification
             $notifsave->notifiable_id = $user_target;
             $notifsave->data = $data;
             $notifsave->save();
-            broadcast(new MessageSent($body, $user_approve, $user_target, route('filament.app.resources.permits.index')));
             $this->fcm->send($token, $title, $body, $data);
         } catch (MessagingException | FirebaseException $e) {
             throw new \Exception($e->getMessage(), 1);

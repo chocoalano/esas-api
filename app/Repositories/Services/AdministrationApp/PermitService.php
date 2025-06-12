@@ -173,7 +173,7 @@ class PermitService implements PermitInterface
     {
         return DB::transaction(function () use ($data) {
             if (isset($data['file']) && !empty($data['file'])) {
-                $attachment=UploadFile::uploadToSpaces($data['file'], 'permits', now()->format('YmdHis'));
+                $attachment = UploadFile::uploadToSpaces($data['file'], 'permits', now()->format('YmdHis'));
                 $data['file'] = $attachment['path'];
             }
             // Buat permit
@@ -226,7 +226,7 @@ class PermitService implements PermitInterface
             }
             $userIds = [];
             foreach ($approval as $k) {
-             array_push($userIds, $k['user_id']);
+                array_push($userIds, $k['user_id']);
             }
             $this->notif->broadcast_approvals($userIds, "{$user->name}-{$user->nip}", $permitType->type);
         });
@@ -267,16 +267,22 @@ class PermitService implements PermitInterface
      */
     public function approved(int $permitId, int $authId, string $approve, string $notes): bool
     {
+        if (!in_array($approve, ['y', 'n'])) {
+            return false; // atau bisa lempar exception jika ingin eksplisit
+        }
         $find = $this->model->with(['approvals', 'permitType', 'userTimeworkSchedule'])->find($permitId);
 
         if (!$find) {
             return false; // Permit tidak ditemukan
         }
-
         // Update approval status
         $filtered = array_values(array_filter($find->approvals->toArray(), function ($item) use ($authId) {
             return $item['user_id'] === (int) $authId;
         }));
+
+        if (count($filtered) < 1) {
+            return false;
+        }
 
         // Ambil elemen pertama dari hasil filter
         $result = $filtered ?? null;
@@ -312,14 +318,8 @@ class PermitService implements PermitInterface
             }
         }
         $user = app(UserInterface::class)->find($find->user_id);
-        $url = route('filament.app.resources.permits.index');
-        $message = "Halo, saya (" . Auth::user()->name . " - " . Auth::user()->nip . ") mengkonfirmasi permintaan " . $find->permitType->type . " milik " . $user->name . " - " . $user->nip . ", silakan periksa sekarang!";
-        NotificationService::sendNotification('Informasi penindakan permintaan', $message, $url, $find->user_id);
-        foreach ($find->approvals->toArray() as $k) {
-            NotificationService::sendNotification('Informasi penindakan permintaan', $message, $url, $k['user_id']);
-        }
-        $this->notif->broadcast_user_apply($user->id, Auth::user()->name." - ".Auth::user()->nip, $find->permitType->type);
-        return true; // Proses berhasil
+        $this->notif->broadcast_user_apply($user->id, Auth::user()->name . " - " . Auth::user()->nip, $find->permitType->type);
+        return true;
     }
 
     public function handleAttendanceCorrection($permit)
